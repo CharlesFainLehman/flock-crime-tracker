@@ -1,0 +1,5 @@
+anthropic>=0.80
+feedparser>=6.0
+googlenewsdecoder>=0.1.7
+requests>=2.31
+trafilatura>=2.0

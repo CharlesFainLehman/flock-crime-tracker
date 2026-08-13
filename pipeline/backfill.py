@@ -9,6 +9,8 @@ Usage:
 """
 
 import argparse
+import os
+import sys
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -45,6 +47,8 @@ def main() -> None:
     end_month = datetime.strptime(args.end, "%Y-%m")
     end = min(now, end_month.replace(day=28) + timedelta(days=4))
 
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        sys.exit("ANTHROPIC_API_KEY is not set; refusing to run.")
     client = anthropic.Anthropic()
     stories = load_stories()
     seen = load_seen_urls()

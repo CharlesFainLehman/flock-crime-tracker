@@ -1,0 +1,49 @@
+name: Backfill (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: "Start month (YYYY-MM)"
+        required: true
+        default: "2019-01"
+      end:
+        description: "End month (YYYY-MM)"
+        required: true
+        default: "2019-12"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-update  # never run alongside the daily job or another backfill
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Run backfill ${{ inputs.start }} .. ${{ inputs.end }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python pipeline/backfill.py --start "${{ inputs.start }}" --end "${{ inputs.end }}"
+
+      - name: Commit updated data and site
+        if: always()  # keep checkpoint progress even if a late month errors
+        run: |
+          git config user.name "flock-tracker-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git pull --rebase --autostash origin main
+          git add data site
+          git diff --cached --quiet || git commit -m "Backfill ${{ inputs.start }}..${{ inputs.end }}"
+          git push

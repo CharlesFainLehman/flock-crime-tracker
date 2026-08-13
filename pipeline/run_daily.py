@@ -1,5 +1,8 @@
 """Daily pipeline: discover -> classify -> dedupe -> save -> rebuild site."""
 
+import os
+import sys
+
 import anthropic
 
 from build_site import build_site
@@ -9,6 +12,8 @@ from store import load_seen_urls, load_stories, save_seen_urls, save_stories
 
 
 def main() -> None:
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        sys.exit("ANTHROPIC_API_KEY is not set; refusing to run.")
     client = anthropic.Anthropic()
     stories = load_stories()
     seen = load_seen_urls()
@@ -27,6 +32,10 @@ def main() -> None:
     print(f"\nDone. New: {counts['new']}, duplicates: {counts['duplicates']}, "
           f"rejected: {counts['rejected']}, already seen: {counts['skipped_seen']}, "
           f"errors: {counts['errors']}. Database now has {len(stories)} incidents.")
+
+    processed = counts["new"] + counts["duplicates"] + counts["rejected"] + counts["errors"]
+    if processed and counts["errors"] > processed / 2:
+        sys.exit("More than half of processed articles errored; failing the run.")
 
 
 if __name__ == "__main__":

@@ -31,13 +31,9 @@ def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
         try:
             text = fetch_article_text(url)
             cls = classify_article(client, candidate, text)
-        except anthropic.APIError as e:
-            print(f"  API error, skipping (will retry next run): {e}")
-            counts["errors"] += 1
-            continue
         except Exception as e:
-            print(f"  error, marking seen: {e}")
-            seen_urls.add(url)
+            # Never mark seen on errors: the article must be retried next run.
+            print(f"  error, skipping (will retry next run): {e}")
             counts["errors"] += 1
             continue
 

@@ -43,15 +43,19 @@ def _headers() -> dict:
 
 
 def _get(url: str, params: dict | None = None) -> dict:
-    for attempt in range(3):
-        resp = requests.get(url, params=params, headers=_headers(), timeout=30)
-        if resp.status_code == 429:
-            time.sleep(30 * (attempt + 1))
-            continue
-        resp.raise_for_status()
-        return resp.json()
-    resp.raise_for_status()
-    return {}
+    last_exc: Exception | None = None
+    for attempt in range(4):
+        try:
+            resp = requests.get(url, params=params, headers=_headers(), timeout=60)
+            if resp.status_code == 429:
+                time.sleep(30 * (attempt + 1))
+                continue
+            resp.raise_for_status()
+            return resp.json()
+        except (requests.Timeout, requests.ConnectionError) as e:
+            last_exc = e
+            time.sleep(15 * (attempt + 1))
+    raise last_exc or RuntimeError(f"CourtListener request failed: {url}")
 
 
 def search(result_type: str, query: str, filed_after: str | None,
@@ -97,7 +101,12 @@ def collect_candidates(filed_after: str | None) -> list[dict]:
     """Flatten search results into per-document candidates with stable keys."""
     candidates: dict[str, dict] = {}
     for q in COURT_QUERIES:
-        for r in search("r", q, filed_after):
+        try:
+            recap_results = search("r", q, filed_after)
+        except Exception as e:
+            print(f"  search failed for {q!r} (type=r), continuing: {e}")
+            recap_results = []
+        for r in recap_results:
             for doc in r.get("recap_documents", []) or []:
                 key = f"r{doc.get('id')}"
                 url = BASE + (doc.get("absolute_url") or r.get("absolute_url") or "")
@@ -111,7 +120,12 @@ def collect_candidates(filed_after: str | None) -> list[dict]:
                     "url": url,
                 })
         time.sleep(2)
-        for r in search("o", q, filed_after):
+        try:
+            opinion_results = search("o", q, filed_after)
+        except Exception as e:
+            print(f"  search failed for {q!r} (type=o), continuing: {e}")
+            opinion_results = []
+        for r in opinion_results:
             key = f"o{r.get('cluster_id')}"
             candidates.setdefault(key, {
                 "key": key, "kind": "opinion", "doc_id": r.get("cluster_id"),

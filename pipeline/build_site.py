@@ -1,11 +1,14 @@
-"""Generate the static site (site/index.html + downloadable CSV) from stories.csv."""
+"""Generate the static site (site/index.html + downloadable CSVs) from the data CSVs."""
 
+import csv
 import json
 import shutil
 from datetime import date
 
-from config import SITE_DIR, STORIES_CSV
+from config import DATA_DIR, SITE_DIR, STORIES_CSV
 from store import load_stories
+
+COURT_CSV = DATA_DIR / "court_records.csv"
 
 TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en">
@@ -106,6 +109,19 @@ TEMPLATE = r"""<!DOCTYPE html>
     <div class="more" id="more" hidden><button id="more-btn">Show more</button></div>
   </div>
 
+  <section class="method" id="courts-section" hidden>
+    <h2>Court records</h2>
+    <p class="subtitle" style="font-size:0.95rem">Federal court filings and opinions in which Flock camera evidence figured in a criminal case, found via the <a href="https://www.courtlistener.com/">CourtListener</a>/RECAP archive &mdash; <span id="court-count"></span> records &middot; <a href="court_records.csv" download>Download CSV</a></p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Filed</th><th>Case</th><th>Court</th><th>Type</th><th>Crime</th><th>Flock's role</th><th>Link</th>
+        </tr></thead>
+        <tbody id="court-rows"></tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="method">
     <h2>Methodology</h2>
     <p>This database is assembled automatically each day. Candidate articles are gathered from the
@@ -128,6 +144,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 </div>
 
 <script id="data" type="application/json">__DATA_JSON__</script>
+<script id="court-data" type="application/json">__COURT_JSON__</script>
 <script>
 (function () {
   var ALL = JSON.parse(document.getElementById("data").textContent);
@@ -280,6 +297,26 @@ TEMPLATE = r"""<!DOCTYPE html>
   });
 
   render();
+
+  // --- court records (static list; separate, smaller dataset) ---
+  var COURT = JSON.parse(document.getElementById("court-data").textContent);
+  if (COURT.length) {
+    document.getElementById("courts-section").hidden = false;
+    document.getElementById("court-count").textContent = COURT.length;
+    document.getElementById("court-rows").innerHTML = COURT.map(function (r) {
+      var caseCell = esc(r.case_name) +
+        (r.matched_story_id ? ' <span class="pill" title="Linked to a news incident in the table above">news #' + esc(r.matched_story_id) + "</span>" : "");
+      return "<tr>" +
+        '<td class="date">' + esc(r.date_filed) + "</td>" +
+        "<td>" + caseCell + "</td>" +
+        "<td>" + esc(r.court) + "</td>" +
+        "<td>" + esc(r.record_type) + "</td>" +
+        '<td><span class="pill">' + esc(r.crime_type || "—") + "</span></td>" +
+        "<td>" + esc(r.flock_role || r.summary) + "</td>" +
+        '<td><a class="srclink" href="' + esc(r.source_url) + '" rel="nofollow noopener">docket</a></td>' +
+        "</tr>";
+    }).join("");
+  }
 })();
 </script>
 </body>
@@ -289,17 +326,26 @@ TEMPLATE = r"""<!DOCTYPE html>
 
 def build_site() -> None:
     stories = load_stories()
+    courts = []
+    if COURT_CSV.exists():
+        with open(COURT_CSV, newline="", encoding="utf-8") as f:
+            courts = list(csv.DictReader(f))
     SITE_DIR.mkdir(parents=True, exist_ok=True)
 
     payload = json.dumps(stories, ensure_ascii=False).replace("</", "<\\/")
+    court_payload = json.dumps(courts, ensure_ascii=False).replace("</", "<\\/")
     html = (TEMPLATE
             .replace("__DATA_JSON__", payload)
+            .replace("__COURT_JSON__", court_payload)
             .replace("__UPDATED__", date.today().strftime("%B %-d, %Y")))
     (SITE_DIR / "index.html").write_text(html, encoding="utf-8")
 
     if STORIES_CSV.exists():
         shutil.copy(STORIES_CSV, SITE_DIR / "stories.csv")
-    print(f"Site built with {len(stories)} stories -> {SITE_DIR / 'index.html'}")
+    if COURT_CSV.exists():
+        shutil.copy(COURT_CSV, SITE_DIR / "court_records.csv")
+    print(f"Site built with {len(stories)} stories, {len(courts)} court records "
+          f"-> {SITE_DIR / 'index.html'}")
 
 
 if __name__ == "__main__":

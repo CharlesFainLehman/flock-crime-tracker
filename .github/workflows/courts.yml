@@ -1,9 +1,14 @@
-name: Daily update
+name: Court records update
 
 on:
   schedule:
-    - cron: "30 10 * * *"  # 10:30 UTC = 6:30am ET (EDT)
+    - cron: "0 12 * * 1"  # Mondays 12:00 UTC
   workflow_dispatch:
+    inputs:
+      full:
+        description: "Full historical sweep (instead of last 60 days)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -11,15 +16,13 @@ permissions:
   id-token: write
 
 concurrency:
-  group: daily-update
+  group: daily-update  # serialize with the daily and backfill jobs
   cancel-in-progress: false
 
 jobs:
-  update:
+  courts:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    timeout-minutes: 300
     steps:
       - uses: actions/checkout@v4
 
@@ -30,12 +33,14 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Run daily pipeline
+      - name: Sweep court records
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python pipeline/run_daily.py
+          COURTLISTENER_TOKEN: ${{ secrets.COURTLISTENER_TOKEN }}
+        run: python pipeline/courts.py ${{ inputs.full && '--full' || '' }}
 
       - name: Commit updated data and site
+        if: always()
         run: |
           git config user.name "flock-tracker-bot"
           git config user.email "actions@users.noreply.github.com"
@@ -43,17 +48,19 @@ jobs:
           git pull --rebase --autostash origin main
           python pipeline/build_site.py
           git add data site
-          git diff --cached --quiet || git commit -m "Daily update $(date -u +%F)"
+          git diff --cached --quiet || git commit -m "Court records update $(date -u +%F)"
           git push
 
       - name: Configure Pages
+        if: always()
         uses: actions/configure-pages@v5
 
       - name: Upload site
+        if: always()
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
       - name: Deploy to GitHub Pages
-        id: deployment
+        if: always()
         uses: actions/deploy-pages@v4

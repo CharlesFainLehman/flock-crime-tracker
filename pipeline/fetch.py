@@ -22,7 +22,10 @@ from googlenewsdecoder import gnewsdecoder
 from config import SEARCH_QUERIES
 
 GDELT_DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
-USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) FlockTracker/1.0"
+# Plain browser UA: GDELT's front end rejects non-browser user agents
+# (github.com/alex9smith/gdelt-doc-api/issues/22).
+USER_AGENT = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+              "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
 
 # Running tally of GDELT request outcomes, for progress reporting.
 GDELT_STATS = {"calls": 0, "retries": 0, "gave_up": 0}

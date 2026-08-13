@@ -35,10 +35,15 @@ An article does NOT qualify if it is:
 - A Flock Safety press release or company/business news with no specific incident
 - A generic license-plate-reader story that never identifies Flock
 - An opinion piece, or a story where the camera's role is speculative
+- A story about a camera ERROR or false hit (misread plate, wrongful stop or
+  detention of an innocent person, charges dismissed). The camera must have
+  helped, not harmed; camera-mistake stories never qualify even though police
+  acted on the hit.
 
 Field guidance for qualifying articles:
 - incident_date: date of the crime or the camera-assisted break in the case, as specific as the article allows (YYYY-MM-DD, YYYY-MM, or YYYY). Use the publication date only if nothing better is stated.
-- state: two-letter US postal code.
+- state: two-letter US postal code. Always provide it when the article names or
+  implies any location; leave city blank rather than state.
 - crime_type: choose the best fit from: {", ".join(CRIME_TYPES)}.
 - camera_role: one short phrase, e.g. "LPR hit located suspect vehicle", "footage identified suspect vehicle", "real-time alert led to traffic stop".
 - outcome: one short phrase, e.g. "arrest", "vehicle recovered", "missing person found", "charges filed", "suspect identified".

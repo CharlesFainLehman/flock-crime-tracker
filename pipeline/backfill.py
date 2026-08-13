@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 import anthropic
 
 from build_site import build_site
-from config import SEARCH_QUERIES
+from config import BACKFILL_QUERIES
 from fetch import gdelt_search
 from process import process_candidates
 from store import load_seen_urls, load_stories, save_seen_urls, save_stories
@@ -56,10 +56,10 @@ def main() -> None:
     for m_start, m_end in month_range(start, end):
         label = m_start.strftime("%Y-%m")
         candidates: dict[str, dict] = {}
-        for q in SEARCH_QUERIES:
+        for q in BACKFILL_QUERIES:
             for c in gdelt_search(q, m_start, m_end):
                 candidates.setdefault(c["url"], c)
-            time.sleep(6)
+            time.sleep(12)
         fresh = [c for c in candidates.values() if c["url"] not in seen]
         print(f"\n=== {label}: {len(candidates)} candidates, {len(fresh)} new ===")
         if not fresh:

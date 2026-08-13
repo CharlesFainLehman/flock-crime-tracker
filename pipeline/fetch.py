@@ -52,7 +52,7 @@ def gdelt_search(query: str, start: datetime, end: datetime, max_records: int = 
             resp = requests.get(GDELT_DOC_API, params=params,
                                 headers={"User-Agent": USER_AGENT}, timeout=30)
             if resp.status_code == 429:
-                time.sleep(20 * (attempt + 1))
+                time.sleep(45 * (attempt + 1))
                 continue
             resp.raise_for_status()
             articles = resp.json().get("articles", [])

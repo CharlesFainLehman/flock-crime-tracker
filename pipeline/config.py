@@ -11,6 +11,13 @@ SEEN_URLS_JSON = DATA_DIR / "seen_urls.json"
 
 CLASSIFY_MODEL = "claude-haiku-4-5"
 
+# Broad queries for the historical backfill: monthly volumes sit far below
+# GDELT's 250-record cap, and fewer calls means less 429 throttling.
+BACKFILL_QUERIES = [
+    '"Flock Safety"',
+    '"Flock camera"',
+]
+
 # Search queries used for both GDELT and Google News discovery.
 SEARCH_QUERIES = [
     '"Flock Safety" camera',

@@ -38,7 +38,7 @@ jobs:
       - name: Run backfill ${{ inputs.start }} .. ${{ inputs.end }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python pipeline/backfill.py --start "${{ inputs.start }}" --end "${{ inputs.end }}"
+        run: python pipeline/backfill.py --start "${{ inputs.start }}" --end "${{ inputs.end }}" --push-progress
 
       - name: Commit updated data and site
         if: always()  # keep checkpoint progress even if a late month errors

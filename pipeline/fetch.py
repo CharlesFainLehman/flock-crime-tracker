@@ -24,6 +24,9 @@ from config import SEARCH_QUERIES
 GDELT_DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) FlockTracker/1.0"
 
+# Running tally of GDELT request outcomes, for progress reporting.
+GDELT_STATS = {"calls": 0, "retries": 0, "gave_up": 0}
+
 # Domains that produce noise, not news coverage.
 SKIP_DOMAINS = ("flocksafety.com", "prnewswire.com", "businesswire.com",
                 "globenewswire.com", "streetinsider.com")
@@ -46,12 +49,14 @@ def gdelt_search(query: str, start: datetime, end: datetime, max_records: int = 
         "startdatetime": start.strftime("%Y%m%d%H%M%S"),
         "enddatetime": end.strftime("%Y%m%d%H%M%S"),
     }
+    GDELT_STATS["calls"] += 1
     articles = None
     for attempt in range(3):
         try:
             resp = requests.get(GDELT_DOC_API, params=params,
                                 headers={"User-Agent": USER_AGENT}, timeout=30)
             if resp.status_code == 429:
+                GDELT_STATS["retries"] += 1
                 time.sleep(45 * (attempt + 1))
                 continue
             resp.raise_for_status()
@@ -61,6 +66,7 @@ def gdelt_search(query: str, start: datetime, end: datetime, max_records: int = 
             print(f"  GDELT error for {query!r}: {e}")
             time.sleep(10)
     if articles is None:
+        GDELT_STATS["gave_up"] += 1
         print(f"  GDELT gave up on {query!r}")
         return []
 

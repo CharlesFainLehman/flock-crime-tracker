@@ -22,6 +22,16 @@ before any row is changed; all removals are recorded in the git history.
 5. **Court records.** Civil suits or policy litigation misclassified as criminal use;
    filings where Flock appears only in passing; per-case duplicate filings that should
    be consolidated.
+6. **Contestability / embarrassment factors.** Rows a critic could cite as evidence that
+   the cameras don't work or cause harm, or that undermine the database's credibility:
+   the camera's role was trivial or overstated relative to the claim; charges were later
+   dropped or the conviction overturned; the story also documents misconduct, wrongful
+   detention, or controversial data use alongside the "success"; the source is
+   effectively a vendor or police press release dressed as news; suppression rulings
+   that found the Flock search unlawful. These flags carry severity "note" and route to
+   the maintainer for a keep / annotate / remove decision — they are never auto-removed,
+   and removals of factually accurate rows are avoided (the public git history makes
+   silent curation more damaging than any awkward row).
 
 ## Mechanism
 

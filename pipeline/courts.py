@@ -22,6 +22,7 @@ import requests
 from pydantic import BaseModel
 
 from config import CLASSIFY_MODEL, CRIME_TYPES, DATA_DIR
+from progress import push_progress
 from store import load_stories
 
 SEARCH_API = "https://www.courtlistener.com/api/rest/v4/search/"
@@ -78,23 +79,33 @@ def search(result_type: str, query: str, filed_after: str | None,
     return out
 
 
+def _get_light(url: str, params: dict) -> dict:
+    """Single-retry fetch for optional enrichment (document text). Text fetches
+    must never stall the sweep — the classifier falls back to the snippet."""
+    for attempt in range(2):
+        try:
+            resp = requests.get(url, params=params, headers=_headers(), timeout=30)
+            if resp.status_code == 429:
+                time.sleep(20)
+                continue
+            resp.raise_for_status()
+            return resp.json()
+        except (requests.Timeout, requests.ConnectionError):
+            continue
+    return {}
+
+
 def fetch_recap_text(doc_id: int, max_chars: int = 12000) -> str:
-    try:
-        data = _get(f"{BASE}/api/rest/v4/recap-documents/{doc_id}/",
-                    {"fields": "plain_text"})
-        return (data.get("plain_text") or "")[:max_chars]
-    except requests.RequestException:
-        return ""
+    data = _get_light(f"{BASE}/api/rest/v4/recap-documents/{doc_id}/",
+                      {"fields": "plain_text"})
+    return (data.get("plain_text") or "")[:max_chars]
 
 
 def fetch_opinion_text(cluster_id: int, max_chars: int = 12000) -> str:
-    try:
-        data = _get(f"{BASE}/api/rest/v4/opinions/",
-                    {"cluster__id": cluster_id, "fields": "plain_text"})
-        results = data.get("results", [])
-        return (results[0].get("plain_text") or "")[:max_chars] if results else ""
-    except requests.RequestException:
-        return ""
+    data = _get_light(f"{BASE}/api/rest/v4/opinions/",
+                      {"cluster__id": cluster_id, "fields": "plain_text"})
+    results = data.get("results", [])
+    return (results[0].get("plain_text") or "")[:max_chars] if results else ""
 
 
 def collect_candidates(filed_after: str | None) -> list[dict]:
@@ -241,6 +252,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--full", action="store_true",
                         help="sweep all history instead of the last 60 days")
+    parser.add_argument("--push-progress", action="store_true",
+                        help="commit+push data/ at each checkpoint (CI only)")
     args = parser.parse_args()
 
     for var in ("COURTLISTENER_TOKEN", "ANTHROPIC_API_KEY"):
@@ -270,6 +283,16 @@ def main() -> None:
             continue
 
         seen.add(cand["key"])
+
+        # Checkpoint every 10 processed docs so interruptions lose little work.
+        if i % 10 == 0:
+            save_court_records(records)
+            with open(SEEN_JSON, "w", encoding="utf-8") as f:
+                json.dump(sorted(seen), f, indent=0)
+            if args.push_progress:
+                push_progress(f"Court sweep progress {i}/{len(candidates)}: "
+                              f"{counts['new']} added, {counts['rejected']} rejected")
+
         if not cls.qualifies:
             print(f"  rejected: {cls.reason[:100]}")
             counts["rejected"] += 1

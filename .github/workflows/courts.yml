@@ -37,7 +37,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           COURTLISTENER_TOKEN: ${{ secrets.COURTLISTENER_TOKEN }}
-        run: python pipeline/courts.py ${{ inputs.full && '--full' || '' }}
+        run: python pipeline/courts.py --push-progress ${{ inputs.full && '--full' || '' }}
 
       - name: Commit updated data and site
         if: always()

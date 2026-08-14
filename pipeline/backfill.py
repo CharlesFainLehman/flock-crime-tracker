@@ -10,7 +10,6 @@ Usage:
 
 import argparse
 import os
-import subprocess
 import sys
 import time
 from datetime import datetime, timedelta, timezone
@@ -18,34 +17,13 @@ from datetime import datetime, timedelta, timezone
 import anthropic
 
 from build_site import build_site
-from config import BACKFILL_QUERIES, REPO_ROOT
+from config import BACKFILL_QUERIES
 from fetch import GDELT_STATS, gdelt_search
 from process import process_candidates
+from progress import push_progress
 from store import load_seen_urls, load_stories, save_seen_urls, save_stories
 
 START_YEAR = 2017
-
-
-def push_progress(message: str) -> None:
-    """Commit and push data/ so progress is visible live via the git log.
-
-    Only used with --push-progress (set in CI); failures are non-fatal since
-    the end-of-run workflow commit is the backstop.
-    """
-    git = ["git", "-C", str(REPO_ROOT),
-           "-c", "user.name=flock-tracker-bot",
-           "-c", "user.email=actions@users.noreply.github.com"]
-    try:
-        subprocess.run(git + ["add", "data"], check=True, capture_output=True)
-        diff = subprocess.run(git + ["diff", "--cached", "--quiet"])
-        if diff.returncode == 0:
-            return
-        subprocess.run(git + ["commit", "-m", message], check=True, capture_output=True)
-        subprocess.run(git + ["pull", "--rebase", "--autostash", "origin", "main"],
-                       check=True, capture_output=True)
-        subprocess.run(git + ["push"], check=True, capture_output=True)
-    except subprocess.CalledProcessError as e:
-        print(f"  progress push failed (non-fatal): {e.stderr or e}")
 
 
 def month_range(start: datetime, end: datetime):

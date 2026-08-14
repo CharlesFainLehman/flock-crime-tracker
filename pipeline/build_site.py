@@ -184,7 +184,7 @@ TEMPLATE = r"""<!DOCTYPE html>
       additional_sources: "", confidence: c.confidence, court_links: []
     });
   });
-  var PAGE = 100;
+  var PAGE = 25;
   var shown = PAGE;
   var sortKey = "date", sortDir = -1;
 

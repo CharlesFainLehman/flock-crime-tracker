@@ -15,7 +15,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Flock Camera Crime Tracker</title>
+<title>Flock Crime Prevention Tracker</title>
 <meta name="description" content="A daily-updated database of news stories in which Flock Safety cameras helped solve or prevent a crime.">
 <style>
   :root {
@@ -86,7 +86,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 <body>
 <div class="wrap">
   <header>
-    <h1>Flock Camera Crime Tracker</h1>
+    <h1>Flock Crime Prevention Tracker</h1>
     <p class="subtitle">A daily-updated database of news stories in which Flock Safety cameras helped solve or prevent a crime.</p>
     <p class="updated">Last updated __UPDATED__ &middot; <a class="dl" href="stories.csv" download>Download the full dataset (CSV)</a></p>
     <nav class="toc">
@@ -158,7 +158,13 @@ TEMPLATE = r"""<!DOCTYPE html>
   </section>
 
   <footer>
-    Data collected via GDELT and Google News; classification assisted by Claude.
+    <p>Created by <a href="https://x.com/charlesflehman">Charles Fain Lehman</a>.</p>
+    <p>Built and maintained in collaboration with <a href="https://claude.com">Claude</a> (Anthropic).
+    Claude wrote the data pipeline and this site, and runs the daily update: gathering candidate
+    articles via <a href="https://www.gdeltproject.org/">GDELT</a> and Google News, reading and
+    classifying each one, extracting the structured fields, merging duplicate coverage, and
+    republishing the database. Court records are gathered via
+    <a href="https://www.courtlistener.com/">CourtListener</a>/RECAP.</p>
   </footer>
 </div>
 

@@ -33,6 +33,7 @@ jobs:
       - name: Run daily pipeline
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PYTHONUNBUFFERED: "1"
         run: python pipeline/run_daily.py
 
       - name: Commit updated data and site

@@ -38,6 +38,7 @@ jobs:
       - name: Run backfill ${{ inputs.start }} .. ${{ inputs.end }}
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PYTHONUNBUFFERED: "1"
         run: python pipeline/backfill.py --start "${{ inputs.start }}" --end "${{ inputs.end }}" --push-progress
 
       - name: Commit updated data and site

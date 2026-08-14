@@ -9,6 +9,10 @@ on:
         description: "Full historical sweep (instead of last 60 days)"
         type: boolean
         default: false
+      from_file:
+        description: "Classify from data/court_candidates.json (no CourtListener calls)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -36,8 +40,9 @@ jobs:
       - name: Sweep court records
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          COURTLISTENER_TOKEN: ${{ secrets.COURTLISTENER_TOKEN }}
-        run: python pipeline/courts.py --push-progress ${{ inputs.full && '--full' || '' }}
+          COURTLISTENER_TOKEN: ${{ inputs.from_file && '' || secrets.COURTLISTENER_TOKEN }}
+          PYTHONUNBUFFERED: "1"
+        run: python pipeline/courts.py --push-progress ${{ inputs.full && '--full' || '' }} ${{ inputs.from_file && '--from-file' || '' }}
 
       - name: Commit updated data and site
         if: always()

@@ -29,6 +29,7 @@ SEARCH_API = "https://www.courtlistener.com/api/rest/v4/search/"
 BASE = "https://www.courtlistener.com"
 COURT_CSV = DATA_DIR / "court_records.csv"
 SEEN_JSON = DATA_DIR / "seen_court_ids.json"
+CANDIDATES_JSON = DATA_DIR / "court_candidates.json"
 
 COURT_QUERIES = ['"flock safety"', '"flock camera"', '"flock cameras"']
 
@@ -40,7 +41,8 @@ COURT_COLUMNS = [
 
 
 def _headers() -> dict:
-    return {"Authorization": f"Token {os.environ['COURTLISTENER_TOKEN']}"}
+    token = os.environ.get("COURTLISTENER_TOKEN")
+    return {"Authorization": f"Token {token}"} if token else {}
 
 
 def _get(url: str, params: dict | None = None) -> dict:
@@ -262,19 +264,39 @@ def main() -> None:
                         help="sweep all history instead of the last 60 days")
     parser.add_argument("--push-progress", action="store_true",
                         help="commit+push data/ at each checkpoint (CI only)")
+    parser.add_argument("--collect-only", action="store_true",
+                        help="search CourtListener and write candidates JSON; no classification")
+    parser.add_argument("--from-file", action="store_true",
+                        help="classify candidates from JSON file; no CourtListener search")
     args = parser.parse_args()
 
-    for var in ("COURTLISTENER_TOKEN", "ANTHROPIC_API_KEY"):
-        if not os.environ.get(var):
-            sys.exit(f"{var} is not set; refusing to run.")
+    if args.collect_only:
+        filed_after = None if args.full else (date.today() - timedelta(days=60)).isoformat()
+        collected, failed_searches = collect_candidates(filed_after)
+        if failed_searches and not collected:
+            sys.exit("Every search failed (rate limit?).")
+        with open(CANDIDATES_JSON, "w", encoding="utf-8") as f:
+            json.dump(collected, f, indent=0)
+        print(f"Wrote {len(collected)} candidates -> {CANDIDATES_JSON}")
+        return
+
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        sys.exit("ANTHROPIC_API_KEY is not set; refusing to run.")
 
     client = anthropic.Anthropic()
     records = load_court_records()
     stories = load_stories()
     seen = set(json.load(open(SEEN_JSON))) if SEEN_JSON.exists() else set()
 
-    filed_after = None if args.full else (date.today() - timedelta(days=60)).isoformat()
-    collected, failed_searches = collect_candidates(filed_after)
+    if args.from_file:
+        with open(CANDIDATES_JSON, encoding="utf-8") as f:
+            collected = json.load(f)
+        failed_searches = 0
+    else:
+        if not os.environ.get("COURTLISTENER_TOKEN"):
+            sys.exit("COURTLISTENER_TOKEN is not set; refusing to run.")
+        filed_after = None if args.full else (date.today() - timedelta(days=60)).isoformat()
+        collected, failed_searches = collect_candidates(filed_after)
     candidates = [c for c in collected if c["key"] not in seen]
     print(f"{len(candidates)} new court-document candidates "
           f"({failed_searches} searches failed)")
@@ -287,8 +309,11 @@ def main() -> None:
     for i, cand in enumerate(candidates, 1):
         print(f"[{i}/{len(candidates)}] {cand['case_name'][:70]} | {cand['description'][:50]}")
         try:
-            text = (fetch_recap_text(cand["doc_id"]) if cand["kind"] == "recap"
-                    else fetch_opinion_text(cand["doc_id"]))
+            if args.from_file:
+                text = ""  # no CourtListener calls in file mode; snippet only
+            else:
+                text = (fetch_recap_text(cand["doc_id"]) if cand["kind"] == "recap"
+                        else fetch_opinion_text(cand["doc_id"]))
             cls = classify_document(client, cand, text)
         except Exception as e:
             print(f"  error, skipping (will retry next run): {e}")

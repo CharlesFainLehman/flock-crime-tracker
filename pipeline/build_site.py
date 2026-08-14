@@ -243,7 +243,6 @@ TEMPLATE = r"""<!DOCTYPE html>
       '<div class="card"><div class="num">' + newsN + '</div><div class="lbl">News stories</div></div>' +
       '<div class="card"><div class="num">' + courtN + '</div><div class="lbl">Court records</div></div>' +
       '<div class="card"><div class="num">' + states.size + '</div><div class="lbl">States</div></div>' +
-      '<div class="card"><div class="num">' + ty + '</div><div class="lbl">In ' + thisYear + '</div></div>' +
       '<div class="card"><div class="num" style="font-size:1.15rem;padding-top:10px">' + esc(top) + '</div><div class="lbl">Top crime type</div></div>';
   }
 

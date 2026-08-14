@@ -22,6 +22,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-python@v5
         with:
@@ -42,6 +44,7 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git checkout -- site || true
           git pull --rebase --autostash origin main
+          python pipeline/validate_data.py
           python pipeline/build_site.py
           git add data site
           git diff --cached --quiet || git commit -m "Daily update $(date -u +%F)"

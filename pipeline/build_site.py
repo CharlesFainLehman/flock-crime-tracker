@@ -24,7 +24,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     --ink: #5d4c37;
     --ink-strong: #3f3223;
     --muted: #8a7a64;
-    --accent: #d97706;
+    --accent: #2a78d6;
     --burgundy: #9c4227;
     --teal: #3f7d74;
     --hairline: #e8dcc8;
@@ -74,7 +74,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   td.summary { min-width: 320px; }
   a { color: var(--burgundy); }
   .srclink { font-size: 0.85rem; }
-  .pill { display: inline-block; background: #f7ecd9; border-radius: 999px; padding: 1px 9px; font-size: 0.8rem; color: var(--ink); white-space: nowrap; }
+  .pill { display: inline-block; background: #e6eefb; border-radius: 999px; padding: 1px 9px; font-size: 0.8rem; color: #1c5cab; white-space: nowrap; }
   .more { text-align: center; padding: 14px; }
   .more button { font: inherit; background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 18px; cursor: pointer; }
   section.method { margin: 40px 0; font-size: 0.92rem; }
@@ -239,7 +239,7 @@ TEMPLATE = r"""<!DOCTYPE html>
       var h = Math.round((H - padB - padT) * v / max);
       var x = padL + i * bw + bw * 0.15, w = bw * 0.7;
       var y = H - padB - h;
-      s += '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + Math.max(h, 1) + '" rx="4" fill="#d97706"/>';
+      s += '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + Math.max(h, 1) + '" rx="4" fill="#2a78d6"/>';
       s += '<text x="' + (x + w / 2) + '" y="' + (y - 5) + '" text-anchor="middle" font-size="11" fill="#5d4c37">' + v + "</text>";
       s += '<text x="' + (x + w / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="#8a7a64">' + esc(k) + "</text>";
     });
@@ -255,7 +255,7 @@ TEMPLATE = r"""<!DOCTYPE html>
       var y = padT + i * rowH;
       var w = Math.max(Math.round((W - labelW - 44) * v / max), 2);
       s += '<text x="' + (labelW - 8) + '" y="' + (y + rowH / 2 + 4) + '" text-anchor="end" font-size="11.5" fill="#5d4c37">' + esc(k) + "</text>";
-      s += '<rect x="' + labelW + '" y="' + (y + 4) + '" width="' + w + '" height="' + (rowH - 10) + '" rx="4" fill="#d97706"/>';
+      s += '<rect x="' + labelW + '" y="' + (y + 4) + '" width="' + w + '" height="' + (rowH - 10) + '" rx="4" fill="#2a78d6"/>';
       s += '<text x="' + (labelW + w + 6) + '" y="' + (y + rowH / 2 + 4) + '" font-size="11" fill="#5d4c37">' + v + "</text>";
     });
     return s + "</svg>";

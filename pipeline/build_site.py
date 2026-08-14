@@ -41,12 +41,14 @@ TEMPLATE = r"""<!DOCTYPE html>
   h1 { font-size: 2rem; margin: 0 0 6px; color: var(--ink-strong); letter-spacing: -0.01em; }
   .subtitle { font-family: Georgia, serif; font-style: italic; color: var(--muted); margin: 0 0 4px; font-size: 1.05rem; }
   .updated { font-size: 0.85rem; color: var(--muted); margin: 0; }
+  nav.toc { margin-top: 14px; font-size: 0.85rem; display: flex; gap: 18px; flex-wrap: wrap; }
+  nav.toc a { color: var(--burgundy); text-decoration: none; border-bottom: 1px solid var(--hairline); padding-bottom: 1px; }
+  nav.toc a:hover { border-color: var(--burgundy); }
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 28px 0; }
   .card { background: var(--card); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px 18px; }
   .card .num { font-size: 1.9rem; font-weight: 700; color: var(--ink-strong); }
   .card .lbl { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
-  @media (max-width: 760px) { .charts { grid-template-columns: 1fr; } }
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-bottom: 28px; }
   .chart-card { background: var(--card); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px 18px; }
   .chart-card h3 { margin: 0 0 10px; font-size: 0.95rem; color: var(--ink-strong); }
   .chart-card svg { width: 100%; height: auto; display: block; }
@@ -61,6 +63,12 @@ TEMPLATE = r"""<!DOCTYPE html>
   table { border-collapse: collapse; width: 100%; font-size: 0.9rem; min-width: 860px; }
   th, td { text-align: left; padding: 10px 12px; vertical-align: top; border-top: 1px solid var(--grid); }
   thead th { border-top: none; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); position: sticky; top: 0; background: var(--card); }
+  thead th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  thead th.sortable:hover { color: var(--ink-strong); }
+  tbody tr:nth-child(even) { background: #fdf9f0; }
+  tbody tr:hover { background: #f9f1e2; }
+  .clear-btn { font: inherit; font-size: 0.85rem; background: none; border: 1px solid var(--hairline); border-radius: 8px; padding: 8px 12px; color: var(--muted); cursor: pointer; }
+  .clear-btn:hover { color: var(--ink-strong); border-color: var(--muted); }
   td.date { white-space: nowrap; font-variant-numeric: tabular-nums; }
   td.loc { white-space: nowrap; }
   td.summary { min-width: 320px; }
@@ -81,6 +89,12 @@ TEMPLATE = r"""<!DOCTYPE html>
     <h1>Flock Camera Crime Tracker</h1>
     <p class="subtitle">A daily-updated database of news stories in which Flock Safety cameras helped solve or prevent a crime.</p>
     <p class="updated">Last updated __UPDATED__ &middot; <a class="dl" href="stories.csv" download>Download the full dataset (CSV)</a></p>
+    <nav class="toc">
+      <a href="#database">Database</a>
+      <a href="#courts-section">Court records</a>
+      <a href="#method">Methodology</a>
+      <a href="https://github.com/CharlesFainLehman/flock-crime-tracker">Data &amp; code</a>
+    </nav>
   </header>
 
   <div class="cards" id="cards"></div>
@@ -88,20 +102,25 @@ TEMPLATE = r"""<!DOCTYPE html>
   <div class="charts">
     <div class="chart-card"><h3>Incidents by year</h3><div id="chart-year"></div></div>
     <div class="chart-card"><h3>Most common crime types</h3><div id="chart-crime"></div></div>
+    <div class="chart-card"><h3>Top states</h3><div id="chart-state"></div></div>
   </div>
 
-  <div class="filters">
+  <div class="filters" id="database">
     <input id="q" type="search" placeholder="Search city, outlet, summary&hellip;" aria-label="Search stories">
     <select id="f-state" aria-label="Filter by state"><option value="">All states</option></select>
     <select id="f-crime" aria-label="Filter by crime type"><option value="">All crime types</option></select>
     <select id="f-year" aria-label="Filter by year"><option value="">All years</option></select>
+    <button class="clear-btn" id="clear" hidden>Clear filters</button>
     <span class="count" id="count"></span>
   </div>
 
   <div class="table-wrap">
     <table>
       <thead><tr>
-        <th>Date</th><th>Location</th><th>Crime</th><th>Camera role</th>
+        <th class="sortable" data-sort="date">Date <span class="arrow"></span></th>
+        <th class="sortable" data-sort="loc">Location <span class="arrow"></span></th>
+        <th class="sortable" data-sort="crime">Crime <span class="arrow"></span></th>
+        <th>Camera role</th>
         <th>Outcome</th><th>Summary</th><th>Source</th>
       </tr></thead>
       <tbody id="rows"></tbody>
@@ -122,7 +141,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </section>
 
-  <section class="method">
+  <section class="method" id="method">
     <h2>Methodology</h2>
     <p>This database is assembled automatically each day. Candidate articles are gathered from the
     <a href="https://www.gdeltproject.org/">GDELT Project</a> and Google News using searches for Flock
@@ -148,8 +167,10 @@ TEMPLATE = r"""<!DOCTYPE html>
 <script>
 (function () {
   var ALL = JSON.parse(document.getElementById("data").textContent);
+  var COURT = JSON.parse(document.getElementById("court-data").textContent);
   var PAGE = 100;
   var shown = PAGE;
+  var sortKey = "date", sortDir = -1;
 
   var esc = function (s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -202,7 +223,8 @@ TEMPLATE = r"""<!DOCTYPE html>
       '<div class="card"><div class="num">' + rows.length + '</div><div class="lbl">Incidents</div></div>' +
       '<div class="card"><div class="num">' + states.size + '</div><div class="lbl">States</div></div>' +
       '<div class="card"><div class="num">' + ty + '</div><div class="lbl">In ' + thisYear + '</div></div>' +
-      '<div class="card"><div class="num" style="font-size:1.15rem;padding-top:10px">' + esc(top) + '</div><div class="lbl">Top crime type</div></div>';
+      '<div class="card"><div class="num" style="font-size:1.15rem;padding-top:10px">' + esc(top) + '</div><div class="lbl">Top crime type</div></div>' +
+      (COURT.length ? '<div class="card"><div class="num">' + COURT.length + '</div><div class="lbl"><a href="#courts-section" style="color:inherit;text-decoration:none">Court records</a></div></div>' : '');
   }
 
   // --- charts (inline SVG, single amber series, direct value labels) ---
@@ -250,6 +272,12 @@ TEMPLATE = r"""<!DOCTYPE html>
     var crimes = Object.keys(byCrime).sort(function (a, b) { return byCrime[b] - byCrime[a]; }).slice(0, 8);
     document.getElementById("chart-crime").innerHTML =
       crimes.length ? barChartH(byCrime, crimes) : '<p style="color:#8a7a64">No data yet.</p>';
+
+    var byState = {};
+    rows.forEach(function (r) { if (r.state) byState[r.state] = (byState[r.state] || 0) + 1; });
+    var states = Object.keys(byState).sort(function (a, b) { return byState[b] - byState[a]; }).slice(0, 8);
+    document.getElementById("chart-state").innerHTML =
+      states.length ? barChartH(byState, states) : '<p style="color:#8a7a64">No data yet.</p>';
   }
 
   // --- table ---
@@ -279,27 +307,62 @@ TEMPLATE = r"""<!DOCTYPE html>
     document.getElementById("more").hidden = rows.length <= shown;
   }
 
+  function sortVal(r) {
+    if (sortKey === "date") return r.incident_date || r.date_added || "";
+    if (sortKey === "loc") return (r.state || "") + " " + (r.city || "");
+    return r.crime_type || "";
+  }
   function render() {
     var rows = filtered();
     rows.sort(function (a, b) {
-      return (b.incident_date || b.date_added) < (a.incident_date || a.date_added) ? -1 : 1;
+      var va = sortVal(a), vb = sortVal(b);
+      return va < vb ? -sortDir : va > vb ? sortDir : 0;
     });
     renderCards(rows);
     renderCharts(rows);
     renderTable(rows);
+    document.querySelectorAll("th.sortable .arrow").forEach(function (el) { el.textContent = ""; });
+    var active = document.querySelector('th.sortable[data-sort="' + sortKey + '"] .arrow');
+    if (active) active.textContent = sortDir === 1 ? "▲" : "▼";
+    var any = q.value || fState.value || fCrime.value || fYear.value;
+    document.getElementById("clear").hidden = !any;
+    var hash = ["q=" + encodeURIComponent(q.value), "state=" + fState.value,
+                "crime=" + encodeURIComponent(fCrime.value), "year=" + fYear.value]
+      .filter(function (kv) { return kv.split("=")[1]; }).join("&");
+    history.replaceState(null, "", hash ? "#" + hash : location.pathname);
   }
 
+  document.querySelectorAll("th.sortable").forEach(function (th) {
+    th.addEventListener("click", function () {
+      var k = th.getAttribute("data-sort");
+      if (sortKey === k) { sortDir = -sortDir; } else { sortKey = k; sortDir = k === "date" ? -1 : 1; }
+      render();
+    });
+  });
   [q, fState, fCrime, fYear].forEach(function (el) {
     el.addEventListener("input", function () { shown = PAGE; render(); });
+  });
+  document.getElementById("clear").addEventListener("click", function () {
+    q.value = ""; fState.value = ""; fCrime.value = ""; fYear.value = "";
+    shown = PAGE; render();
   });
   document.getElementById("more-btn").addEventListener("click", function () {
     shown += PAGE; render();
   });
 
+  // Restore shareable filter state from the URL hash.
+  if (location.hash.length > 1) {
+    location.hash.slice(1).split("&").forEach(function (kv) {
+      var k = kv.split("=")[0], v = decodeURIComponent(kv.split("=").slice(1).join("="));
+      if (k === "q") q.value = v;
+      if (k === "state") fState.value = v;
+      if (k === "crime") fCrime.value = v;
+      if (k === "year") fYear.value = v;
+    });
+  }
   render();
 
   // --- court records (static list; separate, smaller dataset) ---
-  var COURT = JSON.parse(document.getElementById("court-data").textContent);
   if (COURT.length) {
     document.getElementById("courts-section").hidden = false;
     document.getElementById("court-count").textContent = COURT.length;

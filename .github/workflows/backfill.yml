@@ -11,6 +11,10 @@ on:
         description: "End month (YYYY-MM)"
         required: true
         default: "2019-12"
+      narrow:
+        description: "Use six narrow queries (for cap-saturated months)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -41,7 +45,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PYTHONUNBUFFERED: "1"
-        run: python pipeline/backfill.py --start "${{ inputs.start }}" --end "${{ inputs.end }}" --push-progress
+        run: python pipeline/backfill.py --start "${{ inputs.start }}" --end "${{ inputs.end }}" --push-progress ${{ inputs.narrow && '--narrow' || '' }}
 
       - name: Commit updated data and site
         if: always()  # keep checkpoint progress even if a late month errors

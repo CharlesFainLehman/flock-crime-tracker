@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 import anthropic
 
 from build_site import build_site
-from config import BACKFILL_QUERIES
+from config import BACKFILL_QUERIES, SEARCH_QUERIES
 from fetch import GDELT_STATS, gdelt_search
 from process import process_candidates
 from progress import push_progress
@@ -44,6 +44,9 @@ def main() -> None:
     parser.add_argument("--end", default=now.strftime("%Y-%m"))
     parser.add_argument("--push-progress", action="store_true",
                         help="commit+push data/ after each month (CI only)")
+    parser.add_argument("--narrow", action="store_true",
+                        help="use the six narrow search queries (for months that "
+                             "saturated GDELT's 250-record cap under broad queries)")
     args = parser.parse_args()
 
     start = datetime.strptime(args.start, "%Y-%m")
@@ -61,7 +64,7 @@ def main() -> None:
         t0 = time.monotonic()
         stats_before = dict(GDELT_STATS)
         candidates: dict[str, dict] = {}
-        for q in BACKFILL_QUERIES:
+        for q in (SEARCH_QUERIES if args.narrow else BACKFILL_QUERIES):
             for c in gdelt_search(q, m_start, m_end):
                 candidates.setdefault(c["url"], c)
             time.sleep(12)

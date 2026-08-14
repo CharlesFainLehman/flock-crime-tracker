@@ -45,18 +45,22 @@ def _headers() -> dict:
 
 def _get(url: str, params: dict | None = None) -> dict:
     last_exc: Exception | None = None
-    for attempt in range(4):
+    for attempt in range(5):
         try:
             resp = requests.get(url, params=params, headers=_headers(), timeout=60)
             if resp.status_code == 429:
-                time.sleep(30 * (attempt + 1))
+                # Honor Retry-After; CourtListener throttles per-hour, so waits
+                # here are long by design.
+                wait = int(resp.headers.get("Retry-After") or 60 * (attempt + 1))
+                print(f"  CourtListener 429; waiting {wait}s")
+                time.sleep(min(wait, 600))
                 continue
             resp.raise_for_status()
             return resp.json()
         except (requests.Timeout, requests.ConnectionError) as e:
             last_exc = e
             time.sleep(15 * (attempt + 1))
-    raise last_exc or RuntimeError(f"CourtListener request failed: {url}")
+    raise last_exc or RuntimeError(f"CourtListener rate-limited: {url}")
 
 
 def search(result_type: str, query: str, filed_after: str | None,
@@ -108,14 +112,17 @@ def fetch_opinion_text(cluster_id: int, max_chars: int = 12000) -> str:
     return (results[0].get("plain_text") or "")[:max_chars] if results else ""
 
 
-def collect_candidates(filed_after: str | None) -> list[dict]:
-    """Flatten search results into per-document candidates with stable keys."""
+def collect_candidates(filed_after: str | None) -> tuple[list[dict], int]:
+    """Flatten search results into per-document candidates with stable keys.
+    Returns (candidates, failed_search_count)."""
+    failed = 0
     candidates: dict[str, dict] = {}
     for q in COURT_QUERIES:
         try:
             recap_results = search("r", q, filed_after)
         except Exception as e:
             print(f"  search failed for {q!r} (type=r), continuing: {e}")
+            failed += 1
             recap_results = []
         for r in recap_results:
             for doc in r.get("recap_documents", []) or []:
@@ -135,6 +142,7 @@ def collect_candidates(filed_after: str | None) -> list[dict]:
             opinion_results = search("o", q, filed_after)
         except Exception as e:
             print(f"  search failed for {q!r} (type=o), continuing: {e}")
+            failed += 1
             opinion_results = []
         for r in opinion_results:
             key = f"o{r.get('cluster_id')}"
@@ -149,7 +157,7 @@ def collect_candidates(filed_after: str | None) -> list[dict]:
                 "url": BASE + (r.get("absolute_url") or ""),
             })
         time.sleep(2)
-    return list(candidates.values())
+    return list(candidates.values()), failed
 
 
 class CourtClassification(BaseModel):
@@ -266,8 +274,13 @@ def main() -> None:
     seen = set(json.load(open(SEEN_JSON))) if SEEN_JSON.exists() else set()
 
     filed_after = None if args.full else (date.today() - timedelta(days=60)).isoformat()
-    candidates = [c for c in collect_candidates(filed_after) if c["key"] not in seen]
-    print(f"{len(candidates)} new court-document candidates")
+    collected, failed_searches = collect_candidates(filed_after)
+    candidates = [c for c in collected if c["key"] not in seen]
+    print(f"{len(candidates)} new court-document candidates "
+          f"({failed_searches} searches failed)")
+    if failed_searches and not collected:
+        sys.exit("Every search failed (rate limit?); failing loudly instead of "
+                 "reporting an empty sweep as success.")
 
     counts = {"new": 0, "rejected": 0, "errors": 0}
     next_id = max((int(r["id"]) for r in records), default=0) + 1

@@ -340,6 +340,7 @@ def build_site() -> None:
             .replace("__UPDATED__", date.today().strftime("%B %-d, %Y")))
     (SITE_DIR / "index.html").write_text(html, encoding="utf-8")
 
+    (SITE_DIR / "CNAME").write_text("flockstopscrime.com\n")
     if STORIES_CSV.exists():
         shutil.copy(STORIES_CSV, SITE_DIR / "stories.csv")
     if COURT_CSV.exists():

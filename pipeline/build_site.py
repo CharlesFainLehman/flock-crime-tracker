@@ -75,6 +75,8 @@ TEMPLATE = r"""<!DOCTYPE html>
   a { color: var(--burgundy); }
   .srclink { font-size: 0.85rem; }
   .pill { display: inline-block; background: #e6eefb; border-radius: 999px; padding: 1px 9px; font-size: 0.8rem; color: #1c5cab; white-space: nowrap; }
+  .type-news { display: inline-block; border: 1px solid #b7cdf0; border-radius: 999px; padding: 1px 9px; font-size: 0.75rem; color: #1c5cab; }
+  .type-court { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 0.75rem; color: #fff; background: #1c5cab; }
   .more { text-align: center; padding: 14px; }
   .more button { font: inherit; background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 18px; cursor: pointer; }
   section.method { margin: 40px 0; font-size: 0.92rem; }
@@ -88,10 +90,10 @@ TEMPLATE = r"""<!DOCTYPE html>
   <header>
     <h1>Flock Crime Prevention Tracker</h1>
     <p class="subtitle">A daily-updated database of news stories in which Flock Safety cameras helped solve or prevent a crime.</p>
-    <p class="updated">Last updated __UPDATED__ &middot; <a class="dl" href="stories.csv" download>Download the full dataset (CSV)</a></p>
+    <p class="updated">Last updated __UPDATED__ &middot; Download: <a class="dl" href="stories.csv" download>news stories (CSV)</a> &middot; <a class="dl" href="court_records.csv" download>court records (CSV)</a></p>
     <nav class="toc">
       <a href="#database">Database</a>
-      <a href="#courts-section">Court records</a>
+      <a href="#database" data-type-link="court">Court records</a>
       <a href="#method">Methodology</a>
       <a href="https://github.com/CharlesFainLehman/flock-crime-tracker">Data &amp; code</a>
     </nav>
@@ -107,6 +109,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 
   <div class="filters" id="database">
     <input id="q" type="search" placeholder="Search city, outlet, summary&hellip;" aria-label="Search stories">
+    <select id="f-type" aria-label="Filter by source type"><option value="">All sources</option><option value="news">News stories</option><option value="court">Court records</option></select>
     <select id="f-state" aria-label="Filter by state"><option value="">All states</option></select>
     <select id="f-crime" aria-label="Filter by crime type"><option value="">All crime types</option></select>
     <select id="f-year" aria-label="Filter by year"><option value="">All years</option></select>
@@ -117,6 +120,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   <div class="table-wrap">
     <table>
       <thead><tr>
+        <th>Type</th>
         <th class="sortable" data-sort="date">Date <span class="arrow"></span></th>
         <th class="sortable" data-sort="loc">Location <span class="arrow"></span></th>
         <th class="sortable" data-sort="crime">Crime <span class="arrow"></span></th>
@@ -127,19 +131,6 @@ TEMPLATE = r"""<!DOCTYPE html>
     </table>
     <div class="more" id="more" hidden><button id="more-btn">Show more</button></div>
   </div>
-
-  <section class="method" id="courts-section" hidden>
-    <h2>Court records</h2>
-    <p class="subtitle" style="font-size:0.95rem">Federal court filings and opinions in which Flock camera evidence figured in a criminal case, found via the <a href="https://www.courtlistener.com/">CourtListener</a>/RECAP archive &mdash; <span id="court-count"></span> records &middot; <a href="court_records.csv" download>Download CSV</a></p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Filed</th><th>Case</th><th>Court</th><th>Type</th><th>Crime</th><th>Flock's role</th><th>Link</th>
-        </tr></thead>
-        <tbody id="court-rows"></tbody>
-      </table>
-    </div>
-  </section>
 
   <section class="method" id="method">
     <h2>Methodology</h2>
@@ -172,8 +163,27 @@ TEMPLATE = r"""<!DOCTYPE html>
 <script id="court-data" type="application/json">__COURT_JSON__</script>
 <script>
 (function () {
-  var ALL = JSON.parse(document.getElementById("data").textContent);
+  var NEWS = JSON.parse(document.getElementById("data").textContent);
   var COURT = JSON.parse(document.getElementById("court-data").textContent);
+  NEWS.forEach(function (r) { r.kind = "news"; r.court_links = []; });
+  var byId = {};
+  NEWS.forEach(function (r) { byId[r.id] = r; });
+  var ALL = NEWS.slice();
+  COURT.forEach(function (c) {
+    var match = c.matched_story_id && byId[c.matched_story_id];
+    if (match) { match.court_links.push(c.source_url); return; }
+    ALL.push({
+      kind: "court", id: "c" + c.id,
+      incident_date: c.date_filed, date_added: c.date_added,
+      city: "", state: c.state || "",
+      crime_type: c.crime_type || "",
+      camera_role: c.flock_role || "",
+      outcome: c.record_type || "",
+      summary: (c.case_name ? c.case_name + " — " : "") + (c.summary || ""),
+      source_name: c.court || "court filing", source_url: c.source_url,
+      additional_sources: "", confidence: c.confidence, court_links: []
+    });
+  });
   var PAGE = 100;
   var shown = PAGE;
   var sortKey = "date", sortDir = -1;
@@ -187,6 +197,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 
   // --- filters ---
   var q = document.getElementById("q");
+  var fType = document.getElementById("f-type");
   var fState = document.getElementById("f-state");
   var fCrime = document.getElementById("f-crime");
   var fYear = document.getElementById("f-year");
@@ -205,6 +216,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   function filtered() {
     var needle = q.value.trim().toLowerCase();
     return ALL.filter(function (r) {
+      if (fType.value && r.kind !== fType.value) return false;
       if (fState.value && r.state !== fState.value) return false;
       if (fCrime.value && r.crime_type !== fCrime.value) return false;
       if (fYear.value && yearOf(r) !== fYear.value) return false;
@@ -225,12 +237,14 @@ TEMPLATE = r"""<!DOCTYPE html>
     var byCrime = {};
     rows.forEach(function (r) { if (r.crime_type) byCrime[r.crime_type] = (byCrime[r.crime_type] || 0) + 1; });
     var top = Object.keys(byCrime).sort(function (a, b) { return byCrime[b] - byCrime[a]; })[0] || "&mdash;";
+    var newsN = rows.filter(function (r) { return r.kind === "news"; }).length;
+    var courtN = rows.filter(function (r) { return r.kind === "court"; }).length;
     document.getElementById("cards").innerHTML =
-      '<div class="card"><div class="num">' + rows.length + '</div><div class="lbl">Incidents</div></div>' +
+      '<div class="card"><div class="num">' + newsN + '</div><div class="lbl">News stories</div></div>' +
+      '<div class="card"><div class="num">' + courtN + '</div><div class="lbl">Court records</div></div>' +
       '<div class="card"><div class="num">' + states.size + '</div><div class="lbl">States</div></div>' +
       '<div class="card"><div class="num">' + ty + '</div><div class="lbl">In ' + thisYear + '</div></div>' +
-      '<div class="card"><div class="num" style="font-size:1.15rem;padding-top:10px">' + esc(top) + '</div><div class="lbl">Top crime type</div></div>' +
-      (COURT.length ? '<div class="card"><div class="num">' + COURT.length + '</div><div class="lbl"><a href="#courts-section" style="color:inherit;text-decoration:none">Court records</a></div></div>' : '');
+      '<div class="card"><div class="num" style="font-size:1.15rem;padding-top:10px">' + esc(top) + '</div><div class="lbl">Top crime type</div></div>';
   }
 
   // --- charts (inline SVG, single amber series, direct value labels) ---
@@ -292,11 +306,15 @@ TEMPLATE = r"""<!DOCTYPE html>
     (r.additional_sources || "").split(" ").filter(Boolean).forEach(function (u, i) {
       links.push('<a class="srclink" href="' + esc(u) + '" rel="nofollow noopener">+' + (i + 2) + "</a>");
     });
+    (r.court_links || []).forEach(function (u) {
+      links.push('<a class="srclink" href="' + esc(u) + '" rel="nofollow noopener" title="Related court filing">&#9878; docket</a>');
+    });
     return links.join(" ");
   }
   function renderTable(rows) {
     var body = rows.slice(0, shown).map(function (r) {
       return "<tr>" +
+        '<td><span class="type-' + r.kind + '">' + (r.kind === "news" ? "news" : "court") + "</span></td>" +
         '<td class="date">' + esc(r.incident_date || r.date_added) + "</td>" +
         '<td class="loc">' + esc(r.city ? r.city + ", " + r.state : r.state) + "</td>" +
         '<td><span class="pill">' + esc(r.crime_type) + "</span></td>" +
@@ -307,9 +325,9 @@ TEMPLATE = r"""<!DOCTYPE html>
         "</tr>";
     }).join("");
     document.getElementById("rows").innerHTML =
-      body || '<tr><td colspan="7" style="color:#64748b">No matching stories.</td></tr>';
+      body || '<tr><td colspan="8" style="color:#64748b">No matching stories.</td></tr>';
     document.getElementById("count").textContent =
-      rows.length + " of " + ALL.length + " incidents";
+      rows.length + " of " + ALL.length + " records";
     document.getElementById("more").hidden = rows.length <= shown;
   }
 
@@ -330,9 +348,9 @@ TEMPLATE = r"""<!DOCTYPE html>
     document.querySelectorAll("th.sortable .arrow").forEach(function (el) { el.textContent = ""; });
     var active = document.querySelector('th.sortable[data-sort="' + sortKey + '"] .arrow');
     if (active) active.textContent = sortDir === 1 ? "▲" : "▼";
-    var any = q.value || fState.value || fCrime.value || fYear.value;
+    var any = q.value || fType.value || fState.value || fCrime.value || fYear.value;
     document.getElementById("clear").hidden = !any;
-    var hash = ["q=" + encodeURIComponent(q.value), "state=" + fState.value,
+    var hash = ["q=" + encodeURIComponent(q.value), "type=" + fType.value, "state=" + fState.value,
                 "crime=" + encodeURIComponent(fCrime.value), "year=" + fYear.value]
       .filter(function (kv) { return kv.split("=")[1]; }).join("&");
     try {
@@ -347,11 +365,11 @@ TEMPLATE = r"""<!DOCTYPE html>
       render();
     });
   });
-  [q, fState, fCrime, fYear].forEach(function (el) {
+  [q, fType, fState, fCrime, fYear].forEach(function (el) {
     el.addEventListener("input", function () { shown = PAGE; render(); });
   });
   document.getElementById("clear").addEventListener("click", function () {
-    q.value = ""; fState.value = ""; fCrime.value = ""; fYear.value = "";
+    q.value = ""; fType.value = ""; fState.value = ""; fCrime.value = ""; fYear.value = "";
     shown = PAGE; render();
   });
   document.getElementById("more-btn").addEventListener("click", function () {
@@ -363,31 +381,19 @@ TEMPLATE = r"""<!DOCTYPE html>
     location.hash.slice(1).split("&").forEach(function (kv) {
       var k = kv.split("=")[0], v = decodeURIComponent(kv.split("=").slice(1).join("="));
       if (k === "q") q.value = v;
+      if (k === "type") fType.value = v;
       if (k === "state") fState.value = v;
       if (k === "crime") fCrime.value = v;
       if (k === "year") fYear.value = v;
     });
   }
+  document.querySelectorAll("[data-type-link]").forEach(function (a) {
+    a.addEventListener("click", function () {
+      fType.value = a.getAttribute("data-type-link"); shown = PAGE; render();
+    });
+  });
   render();
 
-  // --- court records (static list; separate, smaller dataset) ---
-  if (COURT.length) {
-    document.getElementById("courts-section").hidden = false;
-    document.getElementById("court-count").textContent = COURT.length;
-    document.getElementById("court-rows").innerHTML = COURT.map(function (r) {
-      var caseCell = esc(r.case_name) +
-        (r.matched_story_id ? ' <span class="pill" title="Linked to a news incident in the table above">news #' + esc(r.matched_story_id) + "</span>" : "");
-      return "<tr>" +
-        '<td class="date">' + esc(r.date_filed) + "</td>" +
-        "<td>" + caseCell + "</td>" +
-        "<td>" + esc(r.court) + "</td>" +
-        "<td>" + esc(r.record_type) + "</td>" +
-        '<td><span class="pill">' + esc(r.crime_type || "—") + "</span></td>" +
-        "<td>" + esc(r.flock_role || r.summary) + "</td>" +
-        '<td><a class="srclink" href="' + esc(r.source_url) + '" rel="nofollow noopener">docket</a></td>' +
-        "</tr>";
-    }).join("");
-  }
 })();
 </script>
 </body>

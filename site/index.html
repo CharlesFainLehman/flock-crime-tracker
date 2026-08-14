@@ -63,6 +63,8 @@
   a { color: var(--burgundy); }
   .srclink { font-size: 0.85rem; }
   .pill { display: inline-block; background: #e6eefb; border-radius: 999px; padding: 1px 9px; font-size: 0.8rem; color: #1c5cab; white-space: nowrap; }
+  .type-news { display: inline-block; border: 1px solid #b7cdf0; border-radius: 999px; padding: 1px 9px; font-size: 0.75rem; color: #1c5cab; }
+  .type-court { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 0.75rem; color: #fff; background: #1c5cab; }
   .more { text-align: center; padding: 14px; }
   .more button { font: inherit; background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 18px; cursor: pointer; }
   section.method { margin: 40px 0; font-size: 0.92rem; }
@@ -76,10 +78,10 @@
   <header>
     <h1>Flock Crime Prevention Tracker</h1>
     <p class="subtitle">A daily-updated database of news stories in which Flock Safety cameras helped solve or prevent a crime.</p>
-    <p class="updated">Last updated August 14, 2026 &middot; <a class="dl" href="stories.csv" download>Download the full dataset (CSV)</a></p>
+    <p class="updated">Last updated August 14, 2026 &middot; Download: <a class="dl" href="stories.csv" download>news stories (CSV)</a> &middot; <a class="dl" href="court_records.csv" download>court records (CSV)</a></p>
     <nav class="toc">
       <a href="#database">Database</a>
-      <a href="#courts-section">Court records</a>
+      <a href="#database" data-type-link="court">Court records</a>
       <a href="#method">Methodology</a>
       <a href="https://github.com/CharlesFainLehman/flock-crime-tracker">Data &amp; code</a>
     </nav>
@@ -95,6 +97,7 @@
 
   <div class="filters" id="database">
     <input id="q" type="search" placeholder="Search city, outlet, summary&hellip;" aria-label="Search stories">
+    <select id="f-type" aria-label="Filter by source type"><option value="">All sources</option><option value="news">News stories</option><option value="court">Court records</option></select>
     <select id="f-state" aria-label="Filter by state"><option value="">All states</option></select>
     <select id="f-crime" aria-label="Filter by crime type"><option value="">All crime types</option></select>
     <select id="f-year" aria-label="Filter by year"><option value="">All years</option></select>
@@ -105,6 +108,7 @@
   <div class="table-wrap">
     <table>
       <thead><tr>
+        <th>Type</th>
         <th class="sortable" data-sort="date">Date <span class="arrow"></span></th>
         <th class="sortable" data-sort="loc">Location <span class="arrow"></span></th>
         <th class="sortable" data-sort="crime">Crime <span class="arrow"></span></th>
@@ -115,19 +119,6 @@
     </table>
     <div class="more" id="more" hidden><button id="more-btn">Show more</button></div>
   </div>
-
-  <section class="method" id="courts-section" hidden>
-    <h2>Court records</h2>
-    <p class="subtitle" style="font-size:0.95rem">Federal court filings and opinions in which Flock camera evidence figured in a criminal case, found via the <a href="https://www.courtlistener.com/">CourtListener</a>/RECAP archive &mdash; <span id="court-count"></span> records &middot; <a href="court_records.csv" download>Download CSV</a></p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Filed</th><th>Case</th><th>Court</th><th>Type</th><th>Crime</th><th>Flock's role</th><th>Link</th>
-        </tr></thead>
-        <tbody id="court-rows"></tbody>
-      </table>
-    </div>
-  </section>
 
   <section class="method" id="method">
     <h2>Methodology</h2>
@@ -160,8 +151,27 @@
 <script id="court-data" type="application/json">[{"id": "30", "date_added": "2026-08-14", "record_type": "complaint/indictment", "case_name": "United States v. Mack", "court": "District Court, E.D. Kentucky", "state": "KY", "date_filed": "2026-07-28", "crime_type": "", "flock_role": "", "summary": "", "source_url": "https://www.courtlistener.com/docket/73681616/1/1/united-states-v-mack/", "matched_story_id": "", "confidence": "low"}, {"id": "23", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Pfeffer", "court": "District Court, S.D. Texas", "state": "TX", "date_filed": "2026-07-27", "crime_type": "", "flock_role": "", "summary": "", "source_url": "https://www.courtlistener.com/docket/69320664/413/united-states-v-pfeffer/", "matched_story_id": "", "confidence": "low"}, {"id": "22", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Pfeffer", "court": "District Court, S.D. Texas", "state": "TX", "date_filed": "2026-07-23", "crime_type": "", "flock_role": "LPR evidence subject to suppression motion", "summary": "", "source_url": "https://www.courtlistener.com/docket/69320664/408/united-states-v-pfeffer/", "matched_story_id": "", "confidence": "low"}, {"id": "17", "date_added": "2026-08-14", "record_type": "complaint/indictment", "case_name": "United States v. Gilliam", "court": "District Court, D. Kansas", "state": "KS", "date_filed": "2026-06-05", "crime_type": "", "flock_role": "", "summary": "", "source_url": "https://www.courtlistener.com/docket/73448630/1/united-states-v-gilliam/", "matched_story_id": "", "confidence": "low"}, {"id": "18", "date_added": "2026-08-14", "record_type": "complaint/indictment", "case_name": "United States v. HERROD", "court": "District Court, District of Columbia", "state": "DC", "date_filed": "2026-03-11", "crime_type": "vehicle theft", "flock_role": "LPR notification alerted officer to stolen vehicle", "summary": "In United States v. Herrod, Flock license plate reader technology notified U.S. Park Police of a stolen vehicle during a surge patrol in Washington, D.C. on March 8, 2026, initiating the investigation.", "source_url": "https://www.courtlistener.com/docket/72520623/1/1/united-states-v-herrod/", "matched_story_id": "", "confidence": "high"}, {"id": "19", "date_added": "2026-08-14", "record_type": "complaint/indictment", "case_name": "United States v. HERROD", "court": "District Court, District of Columbia", "state": "DC", "date_filed": "2026-03-11", "crime_type": "vehicle theft", "flock_role": "LPR notification alerting officer to stolen vehicle", "summary": "United States v. Herrod involves a stolen vehicle investigation where U.S. Park Police received a Flock license plate reader notification during a March 8, 2026 patrol, initiating the law enforcement response.", "source_url": "https://www.courtlistener.com/docket/72419774/1/1/united-states-v-herrod/", "matched_story_id": "", "confidence": "medium"}, {"id": "33", "date_added": "2026-08-14", "record_type": "court order/opinion", "case_name": "United States v. Sturdivant", "court": "District Court, N.D. Ohio", "state": "OH", "date_filed": "2026-01-27", "crime_type": "", "flock_role": "ALPR camera evidence subject to sealing/unsealing disputes", "summary": "In United States v. Sturdivant, a federal criminal case, the court ruled on motions to seal or redact documents related to ALPR camera evidence and Leonardo's confidential business information, ordering partial unsealing while protecting trade secrets and personal identifying information.", "source_url": "https://www.courtlistener.com/docket/68774397/127/united-states-v-sturdivant/", "matched_story_id": "", "confidence": "medium"}, {"id": "31", "date_added": "2026-08-14", "record_type": "complaint/indictment", "case_name": "United States v. Readus", "court": "District Court, W.D. Tennessee", "state": "TN", "date_filed": "2026-01-23", "crime_type": "", "flock_role": "", "summary": "", "source_url": "https://www.courtlistener.com/docket/72218844/1/1/united-states-v-readus/", "matched_story_id": "", "confidence": "low"}, {"id": "1", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Gamboa Valadez", "court": "District Court, W.D. Texas", "state": "TX", "date_filed": "2025-10-09", "crime_type": "", "flock_role": "", "summary": "", "source_url": "https://www.courtlistener.com/docket/71611856/32/3/united-states-v-gamboa-valadez/", "matched_story_id": "", "confidence": "low"}, {"id": "2", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Gamboa Valadez", "court": "District Court, W.D. Texas", "state": "TX", "date_filed": "2025-10-09", "crime_type": "", "flock_role": "", "summary": "", "source_url": "https://www.courtlistener.com/docket/71611856/32/5/united-states-v-gamboa-valadez/", "matched_story_id": "", "confidence": "low"}, {"id": "3", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Gamboa Valadez", "court": "District Court, W.D. Texas", "state": "TX", "date_filed": "2025-10-09", "crime_type": "other", "flock_role": "LPR data referenced in law enforcement investigation", "summary": "In United States v. Gamboa Valadez in the W.D. Texas, the defendant filed a motion to suppress evidence and statements; the motion references Flock Safety materials and Lt. Jurado's investigative report, indicating LPR evidence was used in the prosecution.", "source_url": "https://www.courtlistener.com/docket/71611856/32/6/united-states-v-gamboa-valadez/", "matched_story_id": "", "confidence": "medium"}, {"id": "20", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Gamboa Valadez", "court": "District Court, W.D. Texas", "state": "TX", "date_filed": "2025-10-09", "crime_type": "", "flock_role": "", "summary": "", "source_url": "https://www.courtlistener.com/docket/71611856/32/united-states-v-gamboa-valadez/", "matched_story_id": "", "confidence": "low"}, {"id": "7", "date_added": "2026-08-14", "record_type": "court order/opinion", "case_name": "United States v. Bright", "court": "District Court, N.D. Illinois", "state": "IL", "date_filed": "2025-07-11", "crime_type": "other", "flock_role": "LPR images as evidence in prosecution", "summary": "United States v. Bright is a federal criminal case (N.D. Illinois) in which the Government has introduced Flock Safety license plate reader images as evidence; the court permitted briefing on defendant's suppression motion regarding the images, with a ruling on admissibility pending.", "source_url": "https://www.courtlistener.com/docket/66743471/287/united-states-v-bright/", "matched_story_id": "", "confidence": "medium"}, {"id": "14", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Bright", "court": "District Court, N.D. Illinois", "state": "IL", "date_filed": "2025-07-11", "crime_type": "", "flock_role": "LPR images subject to admissibility motion in limine", "summary": "In United States v. Bright, a Northern District of Illinois case, the defendant moved to suppress Flock Safety license plate reader images. The court granted the Government's motion in limine regarding Flock images in part but left the Flock Safety images issue under advisement, requiring defendant to file objections by 7/14/2025.", "source_url": "https://www.courtlistener.com/docket/68542360/287/united-states-v-bright/", "matched_story_id": "", "confidence": "high"}, {"id": "21", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Banks", "court": "District Court, E.D. Virginia", "state": "VA", "date_filed": "2025-05-16", "crime_type": "", "flock_role": "LPR evidence cited in search warrant affidavit", "summary": "In United States v. Banks (E.D. Virginia), a defendant filed a Franks motion challenging the veracity of statements in a search warrant affidavit; Flock camera evidence was referenced in the investigation materials, making this a case where ALPR evidence was used investigatively and then disputed.", "source_url": "https://www.courtlistener.com/docket/69748915/39/united-states-v-banks/", "matched_story_id": "", "confidence": "medium"}, {"id": "29", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Sturdivant", "court": "District Court, N.D. Ohio", "state": "OH", "date_filed": "2024-12-17", "crime_type": "", "flock_role": "LPR query system used to track defendant's location data", "summary": "United States v. Sturdivant (N.D. Ohio, 2024) involves a motion to suppress evidence from warrantless searches of location data, with Flock query system screenshots and timelines referenced in the government's opposition brief.", "source_url": "https://www.courtlistener.com/docket/65643474/98/united-states-v-sturdivant/", "matched_story_id": "395", "confidence": "medium"}, {"id": "24", "date_added": "2026-08-14", "record_type": "court order/opinion", "case_name": "United States v. Martin", "court": "District Court, E.D. Virginia", "state": "VA", "date_filed": "2024-10-11", "crime_type": "", "flock_role": "Subject of suppression motion regarding Flock camera system evidence", "summary": "In United States v. Martin (E.D. Va. 2024), the defendant's motion to suppress evidence derived from the Flock camera system was denied, indicating Flock evidence was used in the investigation.", "source_url": "https://www.courtlistener.com/docket/68634842/76/united-states-v-martin/", "matched_story_id": "", "confidence": "medium"}, {"id": "32", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Martin", "court": "District Court, E.D. Virginia", "state": "VA", "date_filed": "2024-08-28", "crime_type": "", "flock_role": "", "summary": "", "source_url": "https://www.courtlistener.com/docket/68634842/70/united-states-v-martin/", "matched_story_id": "", "confidence": "low"}, {"id": "4", "date_added": "2026-08-14", "record_type": "court order/opinion", "case_name": "United States v. Martin", "court": "District Court, E.D. Virginia", "state": "VA", "date_filed": "2024-07-08", "crime_type": "", "flock_role": "Flock Safety evidence subject to hearing/suppression motion", "summary": "", "source_url": "https://www.courtlistener.com/docket/68634842/53/united-states-v-martin/", "matched_story_id": "", "confidence": "medium"}, {"id": "27", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Sturdivant", "court": "District Court, N.D. Ohio", "state": "OH", "date_filed": "2024-02-29", "crime_type": "", "flock_role": "", "summary": "", "source_url": "https://www.courtlistener.com/docket/68774397/62/united-states-v-sturdivant/", "matched_story_id": "", "confidence": "low"}, {"id": "34", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Sturdivant", "court": "District Court, N.D. Ohio", "state": "OH", "date_filed": "2024-02-29", "crime_type": "", "flock_role": "", "summary": "", "source_url": "https://www.courtlistener.com/docket/65643474/62/united-states-v-sturdivant/", "matched_story_id": "", "confidence": "low"}, {"id": "5", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Martin", "court": "District Court, E.D. Virginia", "state": "VA", "date_filed": "2024-02-20", "crime_type": "", "flock_role": "LPR evidence subject to suppression challenge", "summary": "In United States v. Martin (E.D. Va. 2023), the defendant filed a motion to suppress evidence obtained from the Flock Safety camera system, with supporting affidavit and exhibits from a data recovery expert.", "source_url": "https://www.courtlistener.com/docket/68634842/16/1/united-states-v-martin/", "matched_story_id": "", "confidence": "medium"}, {"id": "6", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Martin", "court": "District Court, E.D. Virginia", "state": "VA", "date_filed": "2024-02-20", "crime_type": "", "flock_role": "LPR evidence subject of suppression motion", "summary": "", "source_url": "https://www.courtlistener.com/docket/68634842/16/united-states-v-martin/", "matched_story_id": "", "confidence": "medium"}, {"id": "25", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Martin", "court": "District Court, E.D. Virginia", "state": "VA", "date_filed": "2024-02-20", "crime_type": "robbery", "flock_role": "LPR evidence used to identify suspect vehicle in armed robbery investigation", "summary": "In United States v. Martin, a suppression motion challenges Flock camera evidence gathered in connection with an April 2023 armed robbery in Richmond, Virginia, where the system was used to locate and identify a gold Acura TL matching the suspect vehicle description.", "source_url": "https://www.courtlistener.com/docket/68634842/16/2/united-states-v-martin/", "matched_story_id": "", "confidence": "medium"}, {"id": "26", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Carpenter", "court": "District Court, N.D. Georgia", "state": "GA", "date_filed": "2024-02-02", "crime_type": "", "flock_role": "Flock camera footage obtained and used in investigation", "summary": "", "source_url": "https://www.courtlistener.com/docket/70461628/90/united-states-v-carpenter/", "matched_story_id": "", "confidence": "low"}, {"id": "9", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Ashmeade", "court": "District Court, N.D. Georgia", "state": "GA", "date_filed": "2024-01-13", "crime_type": "", "flock_role": "Automated license plate reader evidence subject to suppression motion", "summary": "", "source_url": "https://www.courtlistener.com/docket/69537943/448/united-states-v-ashmeade/", "matched_story_id": "", "confidence": "medium"}, {"id": "12", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Ashmeade", "court": "District Court, N.D. Georgia", "state": "GA", "date_filed": "2024-01-13", "crime_type": "", "flock_role": "Automated license plate reader evidence subject to suppression challenge", "summary": "In United States v. Ashmeade (N.D. Georgia), defendant Terez Montavious Pippins filed a motion to suppress evidence recovered from Flock Safety ALPR technology, indicating Flock data was used in the investigation.", "source_url": "https://www.courtlistener.com/docket/67351516/448/united-states-v-ashmeade/", "matched_story_id": "", "confidence": "high"}, {"id": "10", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Ashmeade", "court": "District Court, N.D. Georgia", "state": "GA", "date_filed": "2024-01-12", "crime_type": "other", "flock_role": "Automated license plate reader data subject to suppression motion", "summary": "In United States v. Pippins (N.D. Georgia), a defendant filed a motion to suppress evidence obtained from Flock Safety automated license plate reader technology among other suppression challenges. The prosecutor's response addresses the Flock evidence suppression claim.", "source_url": "https://www.courtlistener.com/docket/69537943/443/united-states-v-ashmeade/", "matched_story_id": "", "confidence": "high"}, {"id": "13", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Ashmeade", "court": "District Court, N.D. Georgia", "state": "GA", "date_filed": "2024-01-12", "crime_type": "", "flock_role": "LPR evidence subject to suppression motion", "summary": "United States v. Terez Montavious Pippins involves a suppression motion challenging evidence obtained from Flock Safety automated license plate reader technology used in the investigation.", "source_url": "https://www.courtlistener.com/docket/67351516/443/united-states-v-ashmeade/", "matched_story_id": "", "confidence": "medium"}, {"id": "15", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Sturdivant", "court": "District Court, N.D. Ohio", "state": "OH", "date_filed": "2023-12-21", "crime_type": "", "flock_role": "License plate reader evidence subject to subpoena", "summary": "", "source_url": "https://www.courtlistener.com/docket/68774397/52/6/united-states-v-sturdivant/", "matched_story_id": "", "confidence": "medium"}, {"id": "16", "date_added": "2026-08-14", "record_type": "court order/opinion", "case_name": "United States v. Sturdivant", "court": "District Court, N.D. Ohio", "state": "OH", "date_filed": "2023-12-21", "crime_type": "", "flock_role": "Flock Safety records subpoenaed as part of discovery", "summary": "", "source_url": "https://www.courtlistener.com/docket/65643474/52/6/united-states-v-sturdivant/", "matched_story_id": "", "confidence": "medium"}, {"id": "28", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Sturdivant", "court": "District Court, N.D. Ohio", "state": "OH", "date_filed": "2023-12-21", "crime_type": "", "flock_role": "Subject of evidence subpoena in criminal investigation", "summary": "", "source_url": "https://www.courtlistener.com/docket/65643474/52/united-states-v-sturdivant/", "matched_story_id": "", "confidence": "medium"}, {"id": "8", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Ashmeade", "court": "District Court, N.D. Georgia", "state": "GA", "date_filed": "2023-11-29", "crime_type": "", "flock_role": "LPR evidence recovered in investigation", "summary": "", "source_url": "https://www.courtlistener.com/docket/69537943/380/united-states-v-ashmeade/", "matched_story_id": "", "confidence": "medium"}, {"id": "11", "date_added": "2026-08-14", "record_type": "suppression motion", "case_name": "United States v. Ashmeade", "court": "District Court, N.D. Georgia", "state": "GA", "date_filed": "2023-11-29", "crime_type": "", "flock_role": "LPR evidence subject to suppression challenge", "summary": "United States v. Ashmeade involved defendant Terez Montavious Pippins filing a motion to suppress evidence recovered through Flock Safety automated license plate reader technology in a federal prosecution in the Northern District of Georgia.", "source_url": "https://www.courtlistener.com/docket/67351516/380/united-states-v-ashmeade/", "matched_story_id": "", "confidence": "medium"}]</script>
 <script>
 (function () {
-  var ALL = JSON.parse(document.getElementById("data").textContent);
+  var NEWS = JSON.parse(document.getElementById("data").textContent);
   var COURT = JSON.parse(document.getElementById("court-data").textContent);
+  NEWS.forEach(function (r) { r.kind = "news"; r.court_links = []; });
+  var byId = {};
+  NEWS.forEach(function (r) { byId[r.id] = r; });
+  var ALL = NEWS.slice();
+  COURT.forEach(function (c) {
+    var match = c.matched_story_id && byId[c.matched_story_id];
+    if (match) { match.court_links.push(c.source_url); return; }
+    ALL.push({
+      kind: "court", id: "c" + c.id,
+      incident_date: c.date_filed, date_added: c.date_added,
+      city: "", state: c.state || "",
+      crime_type: c.crime_type || "",
+      camera_role: c.flock_role || "",
+      outcome: c.record_type || "",
+      summary: (c.case_name ? c.case_name + " — " : "") + (c.summary || ""),
+      source_name: c.court || "court filing", source_url: c.source_url,
+      additional_sources: "", confidence: c.confidence, court_links: []
+    });
+  });
   var PAGE = 100;
   var shown = PAGE;
   var sortKey = "date", sortDir = -1;
@@ -175,6 +185,7 @@
 
   // --- filters ---
   var q = document.getElementById("q");
+  var fType = document.getElementById("f-type");
   var fState = document.getElementById("f-state");
   var fCrime = document.getElementById("f-crime");
   var fYear = document.getElementById("f-year");
@@ -193,6 +204,7 @@
   function filtered() {
     var needle = q.value.trim().toLowerCase();
     return ALL.filter(function (r) {
+      if (fType.value && r.kind !== fType.value) return false;
       if (fState.value && r.state !== fState.value) return false;
       if (fCrime.value && r.crime_type !== fCrime.value) return false;
       if (fYear.value && yearOf(r) !== fYear.value) return false;
@@ -213,12 +225,14 @@
     var byCrime = {};
     rows.forEach(function (r) { if (r.crime_type) byCrime[r.crime_type] = (byCrime[r.crime_type] || 0) + 1; });
     var top = Object.keys(byCrime).sort(function (a, b) { return byCrime[b] - byCrime[a]; })[0] || "&mdash;";
+    var newsN = rows.filter(function (r) { return r.kind === "news"; }).length;
+    var courtN = rows.filter(function (r) { return r.kind === "court"; }).length;
     document.getElementById("cards").innerHTML =
-      '<div class="card"><div class="num">' + rows.length + '</div><div class="lbl">Incidents</div></div>' +
+      '<div class="card"><div class="num">' + newsN + '</div><div class="lbl">News stories</div></div>' +
+      '<div class="card"><div class="num">' + courtN + '</div><div class="lbl">Court records</div></div>' +
       '<div class="card"><div class="num">' + states.size + '</div><div class="lbl">States</div></div>' +
       '<div class="card"><div class="num">' + ty + '</div><div class="lbl">In ' + thisYear + '</div></div>' +
-      '<div class="card"><div class="num" style="font-size:1.15rem;padding-top:10px">' + esc(top) + '</div><div class="lbl">Top crime type</div></div>' +
-      (COURT.length ? '<div class="card"><div class="num">' + COURT.length + '</div><div class="lbl"><a href="#courts-section" style="color:inherit;text-decoration:none">Court records</a></div></div>' : '');
+      '<div class="card"><div class="num" style="font-size:1.15rem;padding-top:10px">' + esc(top) + '</div><div class="lbl">Top crime type</div></div>';
   }
 
   // --- charts (inline SVG, single amber series, direct value labels) ---
@@ -280,11 +294,15 @@
     (r.additional_sources || "").split(" ").filter(Boolean).forEach(function (u, i) {
       links.push('<a class="srclink" href="' + esc(u) + '" rel="nofollow noopener">+' + (i + 2) + "</a>");
     });
+    (r.court_links || []).forEach(function (u) {
+      links.push('<a class="srclink" href="' + esc(u) + '" rel="nofollow noopener" title="Related court filing">&#9878; docket</a>');
+    });
     return links.join(" ");
   }
   function renderTable(rows) {
     var body = rows.slice(0, shown).map(function (r) {
       return "<tr>" +
+        '<td><span class="type-' + r.kind + '">' + (r.kind === "news" ? "news" : "court") + "</span></td>" +
         '<td class="date">' + esc(r.incident_date || r.date_added) + "</td>" +
         '<td class="loc">' + esc(r.city ? r.city + ", " + r.state : r.state) + "</td>" +
         '<td><span class="pill">' + esc(r.crime_type) + "</span></td>" +
@@ -295,9 +313,9 @@
         "</tr>";
     }).join("");
     document.getElementById("rows").innerHTML =
-      body || '<tr><td colspan="7" style="color:#64748b">No matching stories.</td></tr>';
+      body || '<tr><td colspan="8" style="color:#64748b">No matching stories.</td></tr>';
     document.getElementById("count").textContent =
-      rows.length + " of " + ALL.length + " incidents";
+      rows.length + " of " + ALL.length + " records";
     document.getElementById("more").hidden = rows.length <= shown;
   }
 
@@ -318,9 +336,9 @@
     document.querySelectorAll("th.sortable .arrow").forEach(function (el) { el.textContent = ""; });
     var active = document.querySelector('th.sortable[data-sort="' + sortKey + '"] .arrow');
     if (active) active.textContent = sortDir === 1 ? "▲" : "▼";
-    var any = q.value || fState.value || fCrime.value || fYear.value;
+    var any = q.value || fType.value || fState.value || fCrime.value || fYear.value;
     document.getElementById("clear").hidden = !any;
-    var hash = ["q=" + encodeURIComponent(q.value), "state=" + fState.value,
+    var hash = ["q=" + encodeURIComponent(q.value), "type=" + fType.value, "state=" + fState.value,
                 "crime=" + encodeURIComponent(fCrime.value), "year=" + fYear.value]
       .filter(function (kv) { return kv.split("=")[1]; }).join("&");
     try {
@@ -335,11 +353,11 @@
       render();
     });
   });
-  [q, fState, fCrime, fYear].forEach(function (el) {
+  [q, fType, fState, fCrime, fYear].forEach(function (el) {
     el.addEventListener("input", function () { shown = PAGE; render(); });
   });
   document.getElementById("clear").addEventListener("click", function () {
-    q.value = ""; fState.value = ""; fCrime.value = ""; fYear.value = "";
+    q.value = ""; fType.value = ""; fState.value = ""; fCrime.value = ""; fYear.value = "";
     shown = PAGE; render();
   });
   document.getElementById("more-btn").addEventListener("click", function () {
@@ -351,31 +369,19 @@
     location.hash.slice(1).split("&").forEach(function (kv) {
       var k = kv.split("=")[0], v = decodeURIComponent(kv.split("=").slice(1).join("="));
       if (k === "q") q.value = v;
+      if (k === "type") fType.value = v;
       if (k === "state") fState.value = v;
       if (k === "crime") fCrime.value = v;
       if (k === "year") fYear.value = v;
     });
   }
+  document.querySelectorAll("[data-type-link]").forEach(function (a) {
+    a.addEventListener("click", function () {
+      fType.value = a.getAttribute("data-type-link"); shown = PAGE; render();
+    });
+  });
   render();
 
-  // --- court records (static list; separate, smaller dataset) ---
-  if (COURT.length) {
-    document.getElementById("courts-section").hidden = false;
-    document.getElementById("court-count").textContent = COURT.length;
-    document.getElementById("court-rows").innerHTML = COURT.map(function (r) {
-      var caseCell = esc(r.case_name) +
-        (r.matched_story_id ? ' <span class="pill" title="Linked to a news incident in the table above">news #' + esc(r.matched_story_id) + "</span>" : "");
-      return "<tr>" +
-        '<td class="date">' + esc(r.date_filed) + "</td>" +
-        "<td>" + caseCell + "</td>" +
-        "<td>" + esc(r.court) + "</td>" +
-        "<td>" + esc(r.record_type) + "</td>" +
-        '<td><span class="pill">' + esc(r.crime_type || "—") + "</span></td>" +
-        "<td>" + esc(r.flock_role || r.summary) + "</td>" +
-        '<td><a class="srclink" href="' + esc(r.source_url) + '" rel="nofollow noopener">docket</a></td>' +
-        "</tr>";
-    }).join("");
-  }
 })();
 </script>
 </body>

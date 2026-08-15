@@ -66,14 +66,28 @@ TEMPLATE = r"""<!DOCTYPE html>
     background: rgba(0,0,0,0.18); padding: 10px 36px; font-size: 0.85rem; }
   .banner-foot .brand { font-weight: 700; }
   .banner-foot .bdate { opacity: 0.85; }
-  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-bottom: 28px; }
-  .chart-card { background: var(--card); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px 18px; }
+  .charts { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 14px; margin-bottom: 28px; }
+  .chart-card { background: var(--card); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px 18px;
+    display: flex; flex-direction: column; min-width: 0; }
   .chart-card h3 { margin: 0 0 10px; font-size: 0.95rem; color: var(--ink-strong); }
+  .chart-card .chart-body { flex: 1; display: flex; flex-direction: column; justify-content: center; }
   .chart-card svg { width: 100%; height: auto; display: block; }
+  .year-card, .crime-card { min-height: 0; }
+  .map-card { grid-column: 1 / -1; }
+  @media (max-width: 760px) {
+    .charts { grid-template-columns: 1fr; }
+    .map-card { grid-column: auto; }
+    .chart-card { height: 380px; }
+    .chart-card .chart-body { min-height: 0; overflow: hidden; }
+    .chart-card svg { max-height: 100%; }
+    .tiles { grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; }
+    .tile { padding: 6px 8px; }
+    .tile .t-n { font-size: 1.05rem; }
+    .tile .t-l { font-size: 0.66rem; }
+  }
   #chart-year rect[data-year] { transition: fill 0.12s; }
   #chart-year rect[data-year]:hover { fill: #1c5cab; }
-  .map-card { grid-column: 1 / -1; }
-  .usmap { max-width: 720px; margin: 0 auto; }
+  .usmap { width: 100%; max-width: 760px; margin: 0 auto; display: block; }
   .usmap path, .usmap circle { fill: none; stroke: none; pointer-events: none; }
   .usmap path.hit, .usmap circle.hit { fill: #e9eef5; stroke: #fff; stroke-width: 1; pointer-events: all; cursor: pointer; transition: filter 0.12s; }
   .usmap path.hit:hover, .usmap circle.hit:hover { filter: brightness(0.82); }
@@ -83,7 +97,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   .map-legend { display: flex; gap: 4px; align-items: center; justify-content: center; margin-top: 10px;
     font-size: 0.75rem; color: var(--muted); flex-wrap: wrap; }
   .map-legend .sw { width: 26px; height: 12px; border-radius: 3px; display: inline-block; }
-  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: 100%; align-content: stretch; }
   .tile { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--grid);
     border-radius: 9px; cursor: pointer; background: none; font: inherit; text-align: left; color: var(--ink); }
   .tile:hover { border-color: var(--accent); background: #f4f8fd; }
@@ -91,7 +105,8 @@ TEMPLATE = r"""<!DOCTYPE html>
   .tile svg { width: 26px; height: 26px; flex: none; stroke: var(--accent); fill: none;
     stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   .tile .t-n { font-size: 1.25rem; font-weight: 700; color: var(--ink-strong); font-variant-numeric: tabular-nums; line-height: 1.1; }
-  .tile .t-l { font-size: 0.74rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .tile .t-l { font-size: 0.74rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; overflow-wrap: anywhere; line-height: 1.2; display: block; }
+  .tile > span:last-child { min-width: 0; }
   .filters { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 12px; align-items: center; }
   .filters input, .filters select {
     font: inherit; color: var(--ink); background: var(--card);
@@ -152,10 +167,10 @@ TEMPLATE = r"""<!DOCTYPE html>
   </div>
 
   <div class="charts">
-    <div class="chart-card"><h3>Cases by year <span style="font-weight:400;color:var(--muted);font-size:0.8rem">(click to filter)</span></h3><div id="chart-year"></div></div>
-    <div class="chart-card"><h3>Cases by crime type <span style="font-weight:400;color:var(--muted);font-size:0.8rem">(click to filter)</span></h3><div class="tiles" id="chart-crime"></div></div>
+    <div class="chart-card year-card"><h3>Cases by year <span style="font-weight:400;color:var(--muted);font-size:0.8rem">(click to filter)</span></h3><div class="chart-body" id="chart-year"></div></div>
+    <div class="chart-card crime-card"><h3>Cases by crime type <span style="font-weight:400;color:var(--muted);font-size:0.8rem">(click to filter)</span></h3><div class="chart-body"><div class="tiles" id="chart-crime"></div></div></div>
     <div class="chart-card map-card"><h3>Cases by state <span style="font-weight:400;color:var(--muted);font-size:0.8rem">(hover for counts, click to filter)</span></h3>
-      __USMAP__
+      <div class="chart-body">__USMAP__</div>
       <div class="map-legend" id="map-legend"></div>
     </div>
   </div>

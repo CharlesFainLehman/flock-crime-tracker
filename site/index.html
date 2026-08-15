@@ -535,13 +535,17 @@
   var PAGE = 25;
   var shown = PAGE;
   var sortKey = "date", sortDir = -1;
+  var yearOf = function (r) { return (r.incident_date || r.date_added || "").slice(0, 4); };
+  var ALL_YEARS = Array.from(new Set(ALL.map(yearOf).filter(Boolean))).sort();
+  var ALL_CRIME_COUNTS = {};
+  ALL.forEach(function (r) { if (r.crime_type) ALL_CRIME_COUNTS[r.crime_type] = (ALL_CRIME_COUNTS[r.crime_type] || 0) + 1; });
+  var ALL_CRIMES = Object.keys(ALL_CRIME_COUNTS).sort(function (a, b) { return ALL_CRIME_COUNTS[b] - ALL_CRIME_COUNTS[a]; }).slice(0, 8);
 
   var esc = function (s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   };
-  var yearOf = function (r) { return (r.incident_date || r.date_added || "").slice(0, 4); };
 
   // --- filters ---
   var q = document.getElementById("q");
@@ -644,10 +648,10 @@
   }
   function renderCharts(rows) {
     var byYear = {};
-    filtered("year").forEach(function (r) { var y = yearOf(r); if (y) byYear[y] = (byYear[y] || 0) + 1; });
-    var years = Object.keys(byYear).sort();
+    ALL_YEARS.forEach(function (y) { byYear[y] = 0; });
+    filtered("year").forEach(function (r) { var y = yearOf(r); if (y in byYear) byYear[y] += 1; });
     document.getElementById("chart-year").innerHTML =
-      years.length ? barChartV(byYear, years) : '<p style="color:#64748b">No data yet.</p>';
+      ALL_YEARS.length ? barChartV(byYear, ALL_YEARS) : '<p style="color:#64748b">No data yet.</p>';
 
     renderCrimeTiles(rows);
     renderMap(rows);
@@ -673,8 +677,9 @@
   };
   function renderCrimeTiles(rows) {
     var byCrime = {};
-    filtered("crime").forEach(function (r) { if (r.crime_type) byCrime[r.crime_type] = (byCrime[r.crime_type] || 0) + 1; });
-    var crimes = Object.keys(byCrime).sort(function (a, b) { return byCrime[b] - byCrime[a]; }).slice(0, 8);
+    ALL_CRIMES.forEach(function (k) { byCrime[k] = 0; });
+    filtered("crime").forEach(function (r) { if (r.crime_type in byCrime) byCrime[r.crime_type] += 1; });
+    var crimes = ALL_CRIMES;
     document.getElementById("chart-crime").innerHTML = crimes.map(function (k) {
       var sel = fCrime.value === k ? " selected" : (fCrime.value ? " faded" : "");
       return '<button class="tile' + sel + '" data-crime="' + esc(k) + '">' +

@@ -2,7 +2,9 @@
 
 import csv
 import json
+import re
 import shutil
+from pathlib import Path
 from datetime import date
 
 from config import DATA_DIR, SITE_DIR, STORIES_CSV
@@ -68,6 +70,27 @@ TEMPLATE = r"""<!DOCTYPE html>
   .chart-card { background: var(--card); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px 18px; }
   .chart-card h3 { margin: 0 0 10px; font-size: 0.95rem; color: var(--ink-strong); }
   .chart-card svg { width: 100%; height: auto; display: block; }
+  .map-card { grid-column: 1 / -1; }
+  .usmap { max-width: 720px; margin: 0 auto; }
+  .usmap path { fill: #e9eef5; stroke: #fff; stroke-width: 1; transition: opacity 0.12s; }
+  .usmap path.hit { cursor: pointer; }
+  .usmap path.hit:hover { opacity: 0.75; }
+  .usmap path.selected { stroke: #131a22; stroke-width: 2; }
+  .usmap .borders, .usmap .separator1, .usmap .separator2 { fill: none; stroke: #fff; pointer-events: none; }
+  .map-tooltip { position: fixed; pointer-events: none; background: #131a22; color: #fff;
+    padding: 5px 10px; border-radius: 6px; font-size: 0.82rem; z-index: 10; display: none; white-space: nowrap; }
+  .map-legend { display: flex; gap: 4px; align-items: center; justify-content: center; margin-top: 10px;
+    font-size: 0.75rem; color: var(--muted); flex-wrap: wrap; }
+  .map-legend .sw { width: 26px; height: 12px; border-radius: 3px; display: inline-block; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tile { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--grid);
+    border-radius: 9px; cursor: pointer; background: none; font: inherit; text-align: left; color: var(--ink); }
+  .tile:hover { border-color: var(--accent); background: #f4f8fd; }
+  .tile.selected { border-color: var(--accent); background: #e6eefb; }
+  .tile svg { width: 26px; height: 26px; flex: none; stroke: var(--accent); fill: none;
+    stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .tile .t-n { font-size: 1.25rem; font-weight: 700; color: var(--ink-strong); font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .tile .t-l { font-size: 0.74rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
   .filters { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 12px; align-items: center; }
   .filters input, .filters select {
     font: inherit; color: var(--ink); background: var(--card);
@@ -128,10 +151,14 @@ TEMPLATE = r"""<!DOCTYPE html>
   </div>
 
   <div class="charts">
-    <div class="chart-card"><h3>Incidents by year</h3><div id="chart-year"></div></div>
-    <div class="chart-card"><h3>Most common crime types</h3><div id="chart-crime"></div></div>
-    <div class="chart-card"><h3>Top states</h3><div id="chart-state"></div></div>
+    <div class="chart-card"><h3>Cases by year <span style="font-weight:400;color:var(--muted);font-size:0.8rem">(click to filter)</span></h3><div id="chart-year"></div></div>
+    <div class="chart-card"><h3>Cases by crime type <span style="font-weight:400;color:var(--muted);font-size:0.8rem">(click to filter)</span></h3><div class="tiles" id="chart-crime"></div></div>
+    <div class="chart-card map-card"><h3>Cases by state <span style="font-weight:400;color:var(--muted);font-size:0.8rem">(hover for counts, click to filter)</span></h3>
+      __USMAP__
+      <div class="map-legend" id="map-legend"></div>
+    </div>
   </div>
+  <div class="map-tooltip" id="map-tip"></div>
 
   <div class="filters" id="database">
     <input id="q" type="search" placeholder="Search city, outlet, summary&hellip;" aria-label="Search stories">
@@ -300,9 +327,10 @@ TEMPLATE = r"""<!DOCTYPE html>
       var h = Math.round((H - padB - padT) * v / max);
       var x = padL + i * bw + bw * 0.15, w = bw * 0.7;
       var y = H - padB - h;
-      s += '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + Math.max(h, 1) + '" rx="4" fill="#2a78d6"/>';
+      var sel = fYear.value === k ? ' stroke="#131a22" stroke-width="2"' : "";
+      s += '<rect data-year="' + esc(k) + '" style="cursor:pointer" x="' + x + '" y="' + y + '" width="' + w + '" height="' + Math.max(h, 1) + '" rx="4" fill="#2a78d6"' + sel + "/>";
       s += '<text x="' + (x + w / 2) + '" y="' + (y - 5) + '" text-anchor="middle" font-size="11" fill="#2b3440">' + v + "</text>";
-      s += '<text x="' + (x + w / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="#64748b">' + esc(k) + "</text>";
+      s += '<text data-year="' + esc(k) + '" style="cursor:pointer" x="' + (x + w / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="#64748b">' + esc(k) + "</text>";
     });
     return s + "</svg>";
   }
@@ -328,17 +356,91 @@ TEMPLATE = r"""<!DOCTYPE html>
     document.getElementById("chart-year").innerHTML =
       years.length ? barChartV(byYear, years) : '<p style="color:#64748b">No data yet.</p>';
 
+    renderCrimeTiles(rows);
+    renderMap(rows);
+  }
+
+  // --- crime-type icon tiles ---
+  var ICONS = {
+    "vehicle theft": '<svg viewBox="0 0 24 24"><path d="M4 15l1.5-5.5c.2-.8.9-1.5 1.8-1.5h9.4c.9 0 1.6.7 1.8 1.5L20 15"/><path d="M3.5 15h17v3.5h-2"/><path d="M3.5 15v3.5h2"/><circle cx="7.5" cy="18.5" r="1.6"/><circle cx="16.5" cy="18.5" r="1.6"/></svg>',
+    "carjacking": '<svg viewBox="0 0 24 24"><path d="M4 15l1.5-5.5c.2-.8.9-1.5 1.8-1.5h9.4c.9 0 1.6.7 1.8 1.5L20 15"/><path d="M3.5 15h17v3.5h-17z"/><path d="M12 2v4"/><path d="M10.5 3.5L12 2l1.5 1.5"/></svg>',
+    "shooting": '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="1.2"/></svg>',
+    "homicide": '<svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.4"/><path d="M5.5 21c.5-4.5 3-7 6.5-7s6 2.5 6.5 7"/></svg>',
+    "attempted homicide": '<svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.4"/><path d="M5.5 21c.5-4.5 3-7 6.5-7s6 2.5 6.5 7"/><path d="M18 3l3 3M21 3l-3 3"/></svg>',
+    "abduction/missing person": '<svg viewBox="0 0 24 24"><circle cx="10" cy="7" r="3.2"/><path d="M4 21c.4-4.2 2.7-6.6 6-6.6 1.2 0 2.3.3 3.2 1"/><path d="M17 13.5c0-1.4 1.1-2.3 2.4-2.3 1.4 0 2.4 1 2.4 2.2 0 1.7-2.3 1.8-2.3 3.4"/><circle cx="19.5" cy="20" r="0.4"/></svg>',
+    "theft/larceny": '<svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="10" rx="1.5"/><circle cx="12" cy="13" r="2.4"/><path d="M6 8V6.5M18 18v1.5"/></svg>',
+    "robbery": '<svg viewBox="0 0 24 24"><path d="M9.5 6h5l2 3c1.8 2.7 2.5 5.5 2.5 8 0 2.4-3 4-7 4s-7-1.6-7-4c0-2.5.7-5.3 2.5-8z"/><path d="M9.5 6L8 3h8l-1.5 3"/><path d="M12 11v6M10.2 12.4h2.7c2 0 2 2.8-.9 2.8"/></svg>',
+    "hit and run": '<svg viewBox="0 0 24 24"><path d="M7 13l1.2-4.4c.2-.7.8-1.1 1.5-1.1h7.6c.7 0 1.3.4 1.5 1.1L20 13"/><path d="M6.5 13h14v3h-14z"/><circle cx="9.5" cy="16" r="1.4"/><circle cx="17.5" cy="16" r="1.4"/><path d="M2 9h3M1 12h3M2 15h3"/></svg>',
+    "burglary": '<svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/><path d="M14 14l2.5 2"/></svg>',
+    "assault": '<svg viewBox="0 0 24 24"><path d="M12 3l2 4.5L18.5 6l-1.6 4.3L21 12l-4.1 1.7L18.5 18l-4.5-1.5L12 21l-2-4.5L5.5 18l1.6-4.3L3 12l4.1-1.7L5.5 6l4.5 1.5z"/></svg>',
+    "fugitive apprehension": '<svg viewBox="0 0 24 24"><circle cx="7" cy="15" r="3.6"/><circle cx="17" cy="15" r="3.6"/><path d="M10.6 15h2.8"/><path d="M6 11.5V8c0-3 4-3 4 0"/><path d="M18 11.5V8c0-3-4-3-4 0"/></svg>',
+    "weapons offense": '<svg viewBox="0 0 24 24"><path d="M3 8h16v3.5h-5.5l-.8 3H9l.8-3H6.5L6 13H3z"/><path d="M19 8l2-1.5V10"/></svg>',
+    "drug offense": '<svg viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="7" rx="3.5" transform="rotate(-30 12 12.5)"/><path d="M9 10.2l5.5 3.3"/></svg>',
+    "other": '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>'
+  };
+  function renderCrimeTiles(rows) {
     var byCrime = {};
     rows.forEach(function (r) { if (r.crime_type) byCrime[r.crime_type] = (byCrime[r.crime_type] || 0) + 1; });
     var crimes = Object.keys(byCrime).sort(function (a, b) { return byCrime[b] - byCrime[a]; }).slice(0, 8);
-    document.getElementById("chart-crime").innerHTML =
-      crimes.length ? barChartH(byCrime, crimes) : '<p style="color:#64748b">No data yet.</p>';
+    document.getElementById("chart-crime").innerHTML = crimes.map(function (k) {
+      var sel = fCrime.value === k ? " selected" : "";
+      return '<button class="tile' + sel + '" data-crime="' + esc(k) + '">' +
+        (ICONS[k] || ICONS.other) +
+        '<span><span class="t-n">' + byCrime[k] + '</span><br><span class="t-l">' + esc(k) + "</span></span></button>";
+    }).join("");
+    document.querySelectorAll(".tile").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var k = b.getAttribute("data-crime");
+        fCrime.value = fCrime.value === k ? "" : k;
+        shown = PAGE; render();
+      });
+    });
+  }
 
+  // --- choropleth map ---
+  var STATES = "AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC".split(" ");
+  var RAMP = ["#cde2fb", "#9ec5f4", "#5598e7", "#2a78d6", "#1c5cab", "#0d366b"];
+  var BREAKS = [1, 5, 15, 30, 60, 100];  // min count for each ramp step
+  function rampColor(n) {
+    if (!n) return "#e9eef5";
+    var c = RAMP[0];
+    for (var i = 0; i < BREAKS.length; i++) if (n >= BREAKS[i]) c = RAMP[i];
+    return c;
+  }
+  var tip = document.getElementById("map-tip");
+  var mapWired = false;
+  function renderMap(rows) {
     var byState = {};
     rows.forEach(function (r) { if (r.state) byState[r.state] = (byState[r.state] || 0) + 1; });
-    var states = Object.keys(byState).sort(function (a, b) { return byState[b] - byState[a]; }).slice(0, 8);
-    document.getElementById("chart-state").innerHTML =
-      states.length ? barChartH(byState, states) : '<p style="color:#64748b">No data yet.</p>';
+    STATES.forEach(function (code) {
+      var els = document.querySelectorAll(".usmap path." + code.toLowerCase() + ", .usmap circle." + code.toLowerCase());
+      var n = byState[code] || 0;
+      els.forEach(function (el) {
+        el.style.fill = rampColor(n);
+        el.classList.add("hit");
+        el.classList.toggle("selected", fState.value === code);
+        if (!mapWired) {
+          el.addEventListener("mousemove", function (e) {
+            var cnt = (function () { var m = {}; filtered().forEach(function (r) { if (r.state) m[r.state] = (m[r.state] || 0) + 1; }); return m[code] || 0; })();
+            tip.textContent = code + ": " + cnt + " case" + (cnt === 1 ? "" : "s");
+            tip.style.display = "block";
+            tip.style.left = (e.clientX + 14) + "px";
+            tip.style.top = (e.clientY - 10) + "px";
+          });
+          el.addEventListener("mouseleave", function () { tip.style.display = "none"; });
+          el.addEventListener("click", function () {
+            fState.value = fState.value === code ? "" : code;
+            shown = PAGE; render();
+          });
+        }
+      });
+    });
+    mapWired = true;
+    document.getElementById("map-legend").innerHTML =
+      '<span>0</span><span class="sw" style="background:#e9eef5"></span>' +
+      RAMP.map(function (c, i) {
+        return '<span class="sw" style="background:' + c + '" title="' + BREAKS[i] + '+"></span>';
+      }).join("") + "<span>" + BREAKS[BREAKS.length - 1] + "+ cases</span>";
   }
 
   // --- table ---
@@ -429,6 +531,12 @@ TEMPLATE = r"""<!DOCTYPE html>
       if (k === "year") fYear.value = v;
     });
   }
+  document.getElementById("chart-year").addEventListener("click", function (e) {
+    var y = e.target.getAttribute && e.target.getAttribute("data-year");
+    if (!y) return;
+    fYear.value = fYear.value === y ? "" : y;
+    shown = PAGE; render();
+  });
   document.querySelectorAll("[data-type-link]").forEach(function (a) {
     a.addEventListener("click", function () {
       fType.value = a.getAttribute("data-type-link"); shown = PAGE; render();
@@ -441,6 +549,15 @@ TEMPLATE = r"""<!DOCTYPE html>
 </body>
 </html>
 """
+
+
+def _load_usmap() -> str:
+    raw = (Path(__file__).parent / "assets" / "us_states.svg").read_text(encoding="utf-8")
+    inner = raw[raw.index(">", raw.index("<svg")) + 1:raw.rindex("</svg>")]
+    inner = re.sub(r"<title>.*?</title>", "", inner, flags=re.S)
+    inner = re.sub(r"<defs>.*?</defs>", "", inner, flags=re.S)
+    return ('<svg class="usmap" viewBox="0 0 959 593" role="img" '
+            'aria-label="Cases by state">' + inner + "</svg>")
 
 
 def build_site() -> None:
@@ -456,6 +573,7 @@ def build_site() -> None:
     html = (TEMPLATE
             .replace("__DATA_JSON__", payload)
             .replace("__COURT_JSON__", court_payload)
+            .replace("__USMAP__", _load_usmap())
             .replace("__UPDATED__", date.today().strftime("%B %-d, %Y")))
     (SITE_DIR / "index.html").write_text(html, encoding="utf-8")
 

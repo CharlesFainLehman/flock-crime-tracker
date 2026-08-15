@@ -31,7 +31,8 @@ COURT_CSV = DATA_DIR / "court_records.csv"
 SEEN_JSON = DATA_DIR / "seen_court_ids.json"
 CANDIDATES_JSON = DATA_DIR / "court_candidates.json"
 
-COURT_QUERIES = ['"flock safety"', '"flock camera"', '"flock cameras"']
+COURT_QUERIES = ['"flock safety"', '"flock camera"', '"flock cameras"',
+                 '"flock lpr"', '"flock alpr"', '"flock license plate"']
 
 COURT_COLUMNS = [
     "id", "date_added", "record_type", "case_name", "court", "state",

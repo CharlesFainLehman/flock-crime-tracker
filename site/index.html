@@ -56,13 +56,14 @@
   .chart-card { background: var(--card); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px 18px; }
   .chart-card h3 { margin: 0 0 10px; font-size: 0.95rem; color: var(--ink-strong); }
   .chart-card svg { width: 100%; height: auto; display: block; }
+  #chart-year rect[data-year] { transition: fill 0.12s; }
+  #chart-year rect[data-year]:hover { fill: #1c5cab; }
   .map-card { grid-column: 1 / -1; }
   .usmap { max-width: 720px; margin: 0 auto; }
-  .usmap path { fill: #e9eef5; stroke: #fff; stroke-width: 1; transition: opacity 0.12s; }
-  .usmap path.hit { cursor: pointer; }
-  .usmap path.hit:hover { opacity: 0.75; }
-  .usmap path.selected { stroke: #131a22; stroke-width: 2; }
-  .usmap .borders, .usmap .separator1, .usmap .separator2 { fill: none; stroke: #fff; pointer-events: none; }
+  .usmap path, .usmap circle { fill: none; stroke: none; pointer-events: none; }
+  .usmap path.hit, .usmap circle.hit { fill: #e9eef5; stroke: #fff; stroke-width: 1; pointer-events: all; cursor: pointer; transition: filter 0.12s; }
+  .usmap path.hit:hover, .usmap circle.hit:hover { filter: brightness(0.82); }
+  .usmap path.selected, .usmap circle.selected { stroke: #131a22; stroke-width: 2; }
   .map-tooltip { position: fixed; pointer-events: none; background: #131a22; color: #fff;
     padding: 5px 10px; border-radius: 6px; font-size: 0.82rem; z-index: 10; display: none; white-space: nowrap; }
   .map-legend { display: flex; gap: 4px; align-items: center; justify-content: center; margin-top: 10px;

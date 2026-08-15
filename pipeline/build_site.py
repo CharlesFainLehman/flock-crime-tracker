@@ -165,7 +165,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     </div>
     <div class="banner-foot">
       <span class="brand">flockstopscrime.com</span>
-      <span class="bdate" id="b-foot">updated __UPDATED__ &middot; every case independently sourced</span>
+      <span class="bdate" id="b-foot">updated __UPDATED__</span>
     </div>
   </div>
 
@@ -329,7 +329,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     if (fCrime.value) filt.push(fCrime.value);
     if (fYear.value) filt.push(fYear.value);
     if (q.value.trim()) filt.push('"' + q.value.trim() + '"');
-    var base = "updated __UPDATED__ \u00b7 every case independently sourced";
+    var base = "updated __UPDATED__";
     document.getElementById("b-foot").textContent =
       filt.length ? base + " \u00b7 filtered: " + filt.join(" \u00b7 ") : base;
   }

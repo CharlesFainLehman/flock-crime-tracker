@@ -67,7 +67,6 @@ def make_og_image() -> None:
     # footer bar
     draw.rectangle([(0, 540), (W, H)], fill=(16, 55, 105))
     draw.text((70, 565), "flockstopscrime.com", font=_font(34), fill=white)
-    draw.text((640, 570), "every case independently sourced", font=_font(26, bold=False), fill=(200, 216, 240))
 
     SITE_DIR.mkdir(parents=True, exist_ok=True)
     img.save(SITE_DIR / "og-image.png")

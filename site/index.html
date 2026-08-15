@@ -745,7 +745,7 @@
   function sourceCell(r) {
     var links = ['<a class="srclink" href="' + esc(r.source_url) + '" rel="nofollow noopener">' + esc(r.source_name || "link") + "</a>"];
     (r.additional_sources || "").split(" ").filter(Boolean).forEach(function (u, i) {
-      links.push('<a class="srclink" href="' + esc(u) + '" rel="nofollow noopener">+' + (i + 2) + "</a>");
+      links.push('<a class="srclink" href="' + esc(u) + '" rel="nofollow noopener" title="Additional source">+' + (i + 1) + "</a>");
     });
     (r.court_links || []).forEach(function (u) {
       links.push('<a class="srclink" href="' + esc(u) + '" rel="nofollow noopener" title="Related court filing">&#9878; docket</a>');

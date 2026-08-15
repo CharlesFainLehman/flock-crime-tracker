@@ -22,10 +22,12 @@ TEMPLATE = r"""<!DOCTYPE html>
 <meta property="og:title" content="Flock Crime Prevention Tracker">
 <meta property="og:description" content="A daily-updated, independently sourced database of Flock Safety cameras helping solve or prevent crimes.">
 <meta property="og:url" content="https://flockstopscrime.com/">
-<meta property="og:image" content="https://flockstopscrime.com/og-image.png">
+<meta property="og:image" content="https://flockstopscrime.com/og-image.png?v=__BUILD__">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://flockstopscrime.com/og-image.png">
+<meta name="twitter:image" content="https://flockstopscrime.com/og-image.png?v=__BUILD__">
 <style>
   :root {
     --ground: #f6f8fb;
@@ -608,6 +610,7 @@ def build_site() -> None:
             .replace("__DATA_JSON__", payload)
             .replace("__COURT_JSON__", court_payload)
             .replace("__USMAP__", _load_usmap())
+            .replace("__BUILD__", date.today().strftime("%Y%m%d") + str(len(stories)))
             .replace("__UPDATED__", date.today().strftime("%B %-d, %Y")))
     (SITE_DIR / "index.html").write_text(html, encoding="utf-8")
 

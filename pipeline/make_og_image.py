@@ -4,11 +4,9 @@ Called from build_site.py; regenerated on every build so link previews on
 social platforms always show fresh numbers.
 """
 
-from datetime import date
 from pathlib import Path
 
 from config import SITE_DIR
-from store import load_stories
 
 FONT_PATHS = [
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -31,23 +29,17 @@ def _font(size, bold=True):
 
 
 def make_og_image() -> None:
+    """Static branded card — no counts or dates, so cached social previews
+    can never go stale or contradict the live site."""
     try:
         from PIL import Image, ImageDraw
     except ImportError:
         print("Pillow unavailable; skipping og-image")
         return
 
-    stories = load_stories()
-    n = len(stories)
-    states = len({r["state"] for r in stories if r.get("state")})
-    years = sorted({(r.get("incident_date") or r.get("date_added") or "")[:4]
-                    for r in stories if (r.get("incident_date") or r.get("date_added"))})
-    span = f"{years[0]}–{years[-1]}" if years else ""
-
     W, H = 1200, 630
     img = Image.new("RGB", (W, H))
     draw = ImageDraw.Draw(img)
-    # diagonal-ish gradient #1c5cab -> #2a78d6
     c1, c2 = (28, 92, 171), (42, 120, 214)
     for y in range(H):
         t = y / H
@@ -55,22 +47,19 @@ def make_og_image() -> None:
                   fill=tuple(int(a + (b - a) * t) for a, b in zip(c1, c2)))
 
     white = (255, 255, 255)
-    draw.text((70, 90), str(n), font=_font(170), fill=white)
-    label = "documented cases of Flock Safety cameras"
-    label2 = "helping solve or prevent a crime"
-    draw.text((70, 290), label, font=_font(44), fill=white)
-    draw.text((70, 345), label2, font=_font(44), fill=white)
+    draw.text((70, 130), "Flock Crime", font=_font(96), fill=white)
+    draw.text((70, 235), "Prevention Tracker", font=_font(96), fill=white)
+    draw.text((70, 380), "A daily-updated database of news stories in which",
+              font=_font(34, bold=False), fill=(225, 235, 250))
+    draw.text((70, 425), "Flock Safety cameras helped solve or prevent a crime.",
+              font=_font(34, bold=False), fill=(225, 235, 250))
 
-    sub = f"{states} states   ·   {span}   ·   updated {date.today().strftime('%B %d, %Y')}"
-    draw.text((70, 440), sub, font=_font(30, bold=False), fill=(225, 235, 250))
-
-    # footer bar
     draw.rectangle([(0, 540), (W, H)], fill=(16, 55, 105))
     draw.text((70, 565), "flockstopscrime.com", font=_font(34), fill=white)
 
     SITE_DIR.mkdir(parents=True, exist_ok=True)
     img.save(SITE_DIR / "og-image.png")
-    print(f"og-image.png rendered ({n} cases)")
+    print("og-image.png rendered (static)")
 
 
 if __name__ == "__main__":

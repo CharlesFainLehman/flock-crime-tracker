@@ -84,6 +84,7 @@
       <a href="#database" data-type-link="court">Court records</a>
       <a href="#method">Methodology</a>
       <a href="https://github.com/CharlesFainLehman/flock-crime-tracker">Data &amp; code</a>
+      <a href="https://github.com/CharlesFainLehman/flock-crime-tracker/issues/new/choose">Flag an error / suggest a story</a>
     </nav>
   </header>
 
@@ -133,7 +134,11 @@
     here is not an independent verification of the camera&rsquo;s role. Coverage is limited to English-language
     outlets indexed by the sources above, so the database understates the true number of such incidents.
     Each entry links to its source article(s). The full dataset is available as a
-    <a href="stories.csv">CSV download</a>.</p>
+    <a href="stories.csv">CSV download</a>. Spotted an error or a missing incident?
+    <a href="https://github.com/CharlesFainLehman/flock-crime-tracker/issues/new/choose">File a report</a> —
+    submissions are automatically checked against the database and cited sources, then
+    reviewed by the maintainer; every accepted correction is public in the
+    <a href="https://github.com/CharlesFainLehman/flock-crime-tracker/commits/main">edit history</a>.</p>
   </section>
 
   <footer>
@@ -296,6 +301,7 @@
     (r.court_links || []).forEach(function (u) {
       links.push('<a class="srclink" href="' + esc(u) + '" rel="nofollow noopener" title="Related court filing">&#9878; docket</a>');
     });
+    links.push('<a class="srclink" style="opacity:0.55" title="Flag an error in this record" href="https://github.com/CharlesFainLehman/flock-crime-tracker/issues/new?template=flag-error.yml&record-id=' + esc(r.id) + '" rel="nofollow noopener">&#9873;</a>');
     return links.join(" ");
   }
   function renderTable(rows) {

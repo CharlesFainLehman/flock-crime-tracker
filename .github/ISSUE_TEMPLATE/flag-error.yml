@@ -1,0 +1,37 @@
+name: Flag an error in a record
+description: Report a record that is wrong, doesn't belong, or duplicates another.
+title: "[Error report] "
+labels: ["feedback", "error-report"]
+body:
+  - type: input
+    id: record-id
+    attributes:
+      label: Record ID
+      description: The id of the record (visible in the CSV download; or describe the row — date, city, crime).
+      placeholder: "e.g. 412, or '2025-07-11 Delano CA bank robbery'"
+    validations:
+      required: true
+  - type: dropdown
+    id: problem-type
+    attributes:
+      label: What's wrong?
+      options:
+        - Shouldn't be included (not a Flock camera success story)
+        - Factual error (wrong date, location, crime type, or outcome)
+        - Duplicate of another record
+        - Source link is dead or doesn't support the claim
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: explanation
+    attributes:
+      label: Explain the problem
+      description: What specifically is wrong, and how do you know?
+    validations:
+      required: true
+  - type: input
+    id: evidence-url
+    attributes:
+      label: Supporting link (optional)
+      description: A news article, court record, or other source backing your report.

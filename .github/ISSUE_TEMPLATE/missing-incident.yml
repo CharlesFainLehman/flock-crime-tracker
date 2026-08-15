@@ -1,0 +1,31 @@
+name: Report a missing incident
+description: Suggest a Flock-camera crime story the database doesn't have.
+title: "[Missing incident] "
+labels: ["feedback", "missing-incident"]
+body:
+  - type: input
+    id: source-url
+    attributes:
+      label: News link
+      description: A link to news coverage of the incident (required — the database only records sourced incidents).
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Location
+      placeholder: "City, State"
+    validations:
+      required: true
+  - type: input
+    id: incident-date
+    attributes:
+      label: Approximate date
+      placeholder: "YYYY-MM-DD or YYYY-MM"
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Brief description of the crime and the Flock camera's role.
+    validations:
+      required: true

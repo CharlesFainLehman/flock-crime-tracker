@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Flock Crime Prevention Tracker</title>
 <meta name="description" content="A daily-updated database of news stories in which Flock Safety cameras helped solve or prevent a crime.">
+<meta property="og:title" content="Flock Crime Prevention Tracker">
+<meta property="og:description" content="A daily-updated, independently sourced database of Flock Safety cameras helping solve or prevent crimes.">
+<meta property="og:url" content="https://flockstopscrime.com/">
+<meta property="og:image" content="https://flockstopscrime.com/og-image.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://flockstopscrime.com/og-image.png">
 <style>
   :root {
     --ground: #f6f8fb;
@@ -32,10 +39,19 @@
   nav.toc { margin-top: 14px; font-size: 0.85rem; display: flex; gap: 18px; flex-wrap: wrap; }
   nav.toc a { color: var(--burgundy); text-decoration: none; border-bottom: 1px solid var(--hairline); padding-bottom: 1px; }
   nav.toc a:hover { border-color: var(--burgundy); }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 28px 0; }
-  .card { background: var(--card); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px 18px; }
-  .card .num { font-size: 1.9rem; font-weight: 700; color: var(--ink-strong); }
-  .card .lbl { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .banner { border-radius: 14px; overflow: hidden; margin: 28px 0;
+    background: linear-gradient(135deg, #1c5cab 0%, #2a78d6 100%);
+    color: #fff; box-shadow: 0 6px 24px rgba(28,92,171,0.25); }
+  .banner-main { padding: 30px 36px 22px; }
+  .hero { font-size: 3.4rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .hero-label { font-size: 1.15rem; font-weight: 500; opacity: 0.95; margin-top: 6px; max-width: 46em; }
+  .substats { display: flex; gap: 34px; margin-top: 22px; flex-wrap: wrap; }
+  .substat .n { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .substat .l { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
+  .banner-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: rgba(0,0,0,0.18); padding: 10px 36px; font-size: 0.85rem; }
+  .banner-foot .brand { font-weight: 700; }
+  .banner-foot .bdate { opacity: 0.85; }
   .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-bottom: 28px; }
   .chart-card { background: var(--card); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px 18px; }
   .chart-card h3 { margin: 0 0 10px; font-size: 0.95rem; color: var(--ink-strong); }
@@ -87,7 +103,17 @@
     </nav>
   </header>
 
-  <div class="cards" id="cards"></div>
+  <div class="banner" id="banner">
+    <div class="banner-main">
+      <div class="hero" id="b-hero"></div>
+      <div class="hero-label" id="b-label"></div>
+      <div class="substats" id="b-substats"></div>
+    </div>
+    <div class="banner-foot">
+      <span class="brand">flockstopscrime.com</span>
+      <span class="bdate" id="b-foot">updated August 15, 2026 &middot; every case independently sourced</span>
+    </div>
+  </div>
 
   <div class="charts">
     <div class="chart-card"><h3>Incidents by year</h3><div id="chart-year"></div></div>
@@ -221,21 +247,33 @@
     });
   }
 
-  // --- stat cards ---
-  function renderCards(rows) {
+  // --- share banner ---
+  function renderBanner(rows) {
     var states = new Set(rows.map(function (r) { return r.state; }).filter(Boolean));
-    var thisYear = String(new Date().getFullYear());
-    var ty = rows.filter(function (r) { return yearOf(r) === thisYear; }).length;
+    var years = rows.map(yearOf).filter(Boolean).sort();
     var byCrime = {};
     rows.forEach(function (r) { if (r.crime_type) byCrime[r.crime_type] = (byCrime[r.crime_type] || 0) + 1; });
-    var top = Object.keys(byCrime).sort(function (a, b) { return byCrime[b] - byCrime[a]; })[0] || "&mdash;";
-    var newsN = rows.filter(function (r) { return r.kind === "news"; }).length;
-    var courtN = rows.filter(function (r) { return r.kind === "court"; }).length;
-    document.getElementById("cards").innerHTML =
-      '<div class="card"><div class="num">' + newsN + '</div><div class="lbl">News stories</div></div>' +
-      '<div class="card"><div class="num">' + courtN + '</div><div class="lbl">Court records</div></div>' +
-      '<div class="card"><div class="num">' + states.size + '</div><div class="lbl">States</div></div>' +
-      '<div class="card"><div class="num" style="font-size:1.15rem;padding-top:10px">' + esc(top) + '</div><div class="lbl">Top crime type</div></div>';
+    var top = Object.keys(byCrime).sort(function (a, b) { return byCrime[b] - byCrime[a]; }).slice(0, 2);
+    document.getElementById("b-hero").textContent = rows.length;
+    document.getElementById("b-label").textContent =
+      "documented case" + (rows.length === 1 ? "" : "s") +
+      " of Flock Safety cameras helping solve or prevent a crime";
+    var subs = [];
+    subs.push({ n: states.size, l: "state" + (states.size === 1 ? "" : "s") });
+    if (years.length) subs.push({ n: years[0] === years[years.length - 1] ? years[0] : years[0] + "\u2013" + years[years.length - 1], l: "coverage" });
+    top.forEach(function (k) { subs.push({ n: byCrime[k], l: k }); });
+    document.getElementById("b-substats").innerHTML = subs.map(function (x) {
+      return '<div class="substat"><div class="n">' + esc(x.n) + '</div><div class="l">' + esc(x.l) + "</div></div>";
+    }).join("");
+    var filt = [];
+    if (fType.value) filt.push(fType.value === "news" ? "news stories" : "court records");
+    if (fState.value) filt.push(fState.value);
+    if (fCrime.value) filt.push(fCrime.value);
+    if (fYear.value) filt.push(fYear.value);
+    if (q.value.trim()) filt.push('"' + q.value.trim() + '"');
+    var base = "updated August 15, 2026 \u00b7 every case independently sourced";
+    document.getElementById("b-foot").textContent =
+      filt.length ? base + " \u00b7 filtered: " + filt.join(" \u00b7 ") : base;
   }
 
   // --- charts (inline SVG, single amber series, direct value labels) ---
@@ -334,7 +372,7 @@
       var va = sortVal(a), vb = sortVal(b);
       return va < vb ? -sortDir : va > vb ? sortDir : 0;
     });
-    renderCards(rows);
+    renderBanner(rows);
     renderCharts(rows);
     renderTable(rows);
     document.querySelectorAll("th.sortable .arrow").forEach(function (el) { el.textContent = ""; });

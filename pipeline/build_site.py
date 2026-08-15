@@ -86,7 +86,8 @@ TEMPLATE = r"""<!DOCTYPE html>
     .tile .t-l { font-size: 0.66rem; }
   }
   #chart-year rect[data-year] { transition: fill 0.12s; }
-  #chart-year rect[data-year]:hover { fill: #1c5cab; }
+  #chart-year rect.bar-on:hover { fill: #1c5cab; }
+  #chart-year rect.bar-off:hover { fill: #9ec5f4; }
   .usmap { width: 100%; max-width: 760px; margin: 0 auto; display: block; }
   .usmap path, .usmap circle { fill: none; stroke: none; pointer-events: none; }
   .usmap path.hit, .usmap circle.hit { fill: #e9eef5; stroke: #fff; stroke-width: 1; pointer-events: all; cursor: pointer; transition: filter 0.12s; }
@@ -102,6 +103,8 @@ TEMPLATE = r"""<!DOCTYPE html>
     border-radius: 9px; cursor: pointer; background: none; font: inherit; text-align: left; color: var(--ink); }
   .tile:hover { border-color: var(--accent); background: #f4f8fd; }
   .tile.selected { border-color: var(--accent); background: #e6eefb; }
+  .tile.faded { opacity: 0.42; }
+  .tile.faded:hover { opacity: 0.8; }
   .tile svg { width: 26px; height: 26px; flex: none; stroke: var(--accent); fill: none;
     stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   .tile .t-n { font-size: 1.25rem; font-weight: 700; color: var(--ink-strong); font-variant-numeric: tabular-nums; line-height: 1.1; }
@@ -286,13 +289,13 @@ TEMPLATE = r"""<!DOCTYPE html>
   fillSelect(fCrime, Array.from(new Set(ALL.map(function (r) { return r.crime_type; }).filter(Boolean))).sort());
   fillSelect(fYear, Array.from(new Set(ALL.map(yearOf).filter(Boolean))).sort().reverse());
 
-  function filtered() {
+  function filtered(ignore) {
     var needle = q.value.trim().toLowerCase();
     return ALL.filter(function (r) {
       if (fType.value && r.kind !== fType.value) return false;
-      if (fState.value && r.state !== fState.value) return false;
-      if (fCrime.value && r.crime_type !== fCrime.value) return false;
-      if (fYear.value && yearOf(r) !== fYear.value) return false;
+      if (ignore !== "state" && fState.value && r.state !== fState.value) return false;
+      if (ignore !== "crime" && fCrime.value && r.crime_type !== fCrime.value) return false;
+      if (ignore !== "year" && fYear.value && yearOf(r) !== fYear.value) return false;
       if (needle) {
         var hay = (r.city + " " + r.state + " " + r.summary + " " + r.source_name + " " +
                    r.crime_type + " " + r.outcome + " " + r.camera_role).toLowerCase();
@@ -343,10 +346,12 @@ TEMPLATE = r"""<!DOCTYPE html>
       var h = Math.round((H - padB - padT) * v / max);
       var x = padL + i * bw + bw * 0.15, w = bw * 0.7;
       var y = H - padB - h;
+      var active = !fYear.value || fYear.value === k;
+      var fill = active ? "#2a78d6" : "#c9d8ee";
       var sel = fYear.value === k ? ' stroke="#131a22" stroke-width="2"' : "";
-      s += '<rect data-year="' + esc(k) + '" style="cursor:pointer" x="' + x + '" y="' + y + '" width="' + w + '" height="' + Math.max(h, 1) + '" rx="4" fill="#2a78d6"' + sel + "/>";
-      s += '<text x="' + (x + w / 2) + '" y="' + (y - 5) + '" text-anchor="middle" font-size="11" fill="#2b3440">' + v + "</text>";
-      s += '<text data-year="' + esc(k) + '" style="cursor:pointer" x="' + (x + w / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="#64748b">' + esc(k) + "</text>";
+      s += '<rect data-year="' + esc(k) + '" class="' + (active ? "bar-on" : "bar-off") + '" style="cursor:pointer" x="' + x + '" y="' + y + '" width="' + w + '" height="' + Math.max(h, 1) + '" rx="4" fill="' + fill + '"' + sel + "/>";
+      s += '<text x="' + (x + w / 2) + '" y="' + (y - 5) + '" text-anchor="middle" font-size="11" fill="' + (active ? "#2b3440" : "#a4b0c0") + '">' + v + "</text>";
+      s += '<text data-year="' + esc(k) + '" style="cursor:pointer" x="' + (x + w / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="' + (active ? "#64748b" : "#a4b0c0") + '">' + esc(k) + "</text>";
     });
     return s + "</svg>";
   }
@@ -367,7 +372,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   }
   function renderCharts(rows) {
     var byYear = {};
-    rows.forEach(function (r) { var y = yearOf(r); if (y) byYear[y] = (byYear[y] || 0) + 1; });
+    filtered("year").forEach(function (r) { var y = yearOf(r); if (y) byYear[y] = (byYear[y] || 0) + 1; });
     var years = Object.keys(byYear).sort();
     document.getElementById("chart-year").innerHTML =
       years.length ? barChartV(byYear, years) : '<p style="color:#64748b">No data yet.</p>';
@@ -396,10 +401,10 @@ TEMPLATE = r"""<!DOCTYPE html>
   };
   function renderCrimeTiles(rows) {
     var byCrime = {};
-    rows.forEach(function (r) { if (r.crime_type) byCrime[r.crime_type] = (byCrime[r.crime_type] || 0) + 1; });
+    filtered("crime").forEach(function (r) { if (r.crime_type) byCrime[r.crime_type] = (byCrime[r.crime_type] || 0) + 1; });
     var crimes = Object.keys(byCrime).sort(function (a, b) { return byCrime[b] - byCrime[a]; }).slice(0, 8);
     document.getElementById("chart-crime").innerHTML = crimes.map(function (k) {
-      var sel = fCrime.value === k ? " selected" : "";
+      var sel = fCrime.value === k ? " selected" : (fCrime.value ? " faded" : "");
       return '<button class="tile' + sel + '" data-crime="' + esc(k) + '">' +
         (ICONS[k] || ICONS.other) +
         '<span><span class="t-n">' + byCrime[k] + '</span><br><span class="t-l">' + esc(k) + "</span></span></button>";
@@ -427,7 +432,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   var mapWired = false;
   function renderMap(rows) {
     var byState = {};
-    rows.forEach(function (r) { if (r.state) byState[r.state] = (byState[r.state] || 0) + 1; });
+    filtered("state").forEach(function (r) { if (r.state) byState[r.state] = (byState[r.state] || 0) + 1; });
     STATES.forEach(function (code) {
       var els = document.querySelectorAll(".usmap path." + code.toLowerCase() + ", .usmap circle." + code.toLowerCase());
       var n = byState[code] || 0;
@@ -437,7 +442,7 @@ TEMPLATE = r"""<!DOCTYPE html>
         el.classList.toggle("selected", fState.value === code);
         if (!mapWired) {
           el.addEventListener("mousemove", function (e) {
-            var cnt = (function () { var m = {}; filtered().forEach(function (r) { if (r.state) m[r.state] = (m[r.state] || 0) + 1; }); return m[code] || 0; })();
+            var cnt = (function () { var m = {}; filtered("state").forEach(function (r) { if (r.state) m[r.state] = (m[r.state] || 0) + 1; }); return m[code] || 0; })();
             tip.textContent = code + ": " + cnt + " case" + (cnt === 1 ? "" : "s");
             tip.style.display = "block";
             tip.style.left = (e.clientX + 14) + "px";

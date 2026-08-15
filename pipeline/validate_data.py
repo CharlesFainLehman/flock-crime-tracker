@@ -30,6 +30,13 @@ def main() -> None:
             if any(line.startswith(m) for line in text.splitlines()):
                 fail(f"{p.name} contains git conflict marker {m!r}")
         rows = list(csv.DictReader(open(p, newline="", encoding="utf-8")))
+        from datetime import date, timedelta
+        horizon = (date.today() + timedelta(days=2)).isoformat()
+        for r in rows:
+            for field in ("incident_date", "date_filed"):
+                v = (r.get(field) or "")
+                if v and v[:10] > horizon:
+                    fail(f"{p.name} id {r.get('id')}: {field} {v!r} is in the future")
         ids = [r["id"] for r in rows if r.get("id")]
         if len(ids) != len(set(ids)):
             dupes = sorted({i for i in ids if ids.count(i) > 1})[:5]

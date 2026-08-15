@@ -76,7 +76,10 @@ def gdelt_search(query: str, start: datetime, end: datetime, max_records: int = 
     out = []
     for a in articles:
         domain = a.get("domain", "")
+        url = a.get("url", "")
         if any(skip in domain for skip in SKIP_DOMAINS):
+            continue
+        if "newswire" in url.lower():  # press releases republished via wire sections
             continue
         seendate = a.get("seendate", "")  # e.g. 20250811T120000Z
         published = ""

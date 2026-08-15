@@ -213,6 +213,14 @@ TEMPLATE = r"""<!DOCTYPE html>
     camera assisted in solving or preventing a crime &mdash; excluding privacy debates, procurement news,
     and company press releases &mdash; and to extract the date, location, crime type, the camera&rsquo;s
     role, and the outcome. Stories covering the same incident are merged into a single entry.</p>
+    <p><strong>What counts.</strong> A record must describe a specific criminal incident in which a
+    Flock license-plate-reader camera contributed to a concrete outcome: an arrest, the recovery of
+    stolen property, the prevention of a crime in progress, or the identification of a suspect who was
+    subsequently charged. Locating and apprehending a wanted suspect counts &mdash; the database is about
+    cameras helping police solve and prevent crime, not about cameras working alone. Excluded by rule:
+    missing-person recoveries with no underlying crime, cases with no resolved outcome at publication,
+    aggregate deployment statistics, Flock&rsquo;s audio gunshot-detection products, and vendor press
+    releases without independent coverage.</p>
     <p>Entries reflect claims made in news reports, which typically rely on police statements; inclusion
     here is not an independent verification of the camera&rsquo;s role. Coverage is limited to English-language
     outlets indexed by the sources above, so the database understates the true number of such incidents.

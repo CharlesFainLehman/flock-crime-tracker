@@ -93,7 +93,6 @@ TEMPLATE = r"""<!DOCTYPE html>
     <p class="updated">Last updated __UPDATED__ &middot; Download: <a class="dl" href="stories.csv" download>news stories (CSV)</a> &middot; <a class="dl" href="court_records.csv" download>court records (CSV)</a></p>
     <nav class="toc">
       <a href="#database">Database</a>
-      <a href="#database" data-type-link="court">Court records</a>
       <a href="#method">Methodology</a>
       <a href="https://github.com/CharlesFainLehman/flock-crime-tracker">Data &amp; code</a>
       <a href="https://github.com/CharlesFainLehman/flock-crime-tracker/issues/new/choose">Flag an error / suggest a story</a>

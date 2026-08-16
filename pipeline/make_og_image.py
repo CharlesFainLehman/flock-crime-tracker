@@ -28,6 +28,9 @@ def _font(size, bold=True):
     return ImageFont.load_default()
 
 
+CARD_SPEC = "v2|Flock Crime Prevention Tracker|A daily-updated database of news stories in which Flock Safety cameras helped solve or prevent a crime.|flockstopscrime.com|blue-gradient"
+
+
 def make_og_image() -> None:
     """Static branded card — no counts or dates, so cached social previews
     can never go stale or contradict the live site."""
@@ -58,8 +61,21 @@ def make_og_image() -> None:
     draw.text((70, 565), "flockstopscrime.com", font=_font(34), fill=white)
 
     SITE_DIR.mkdir(parents=True, exist_ok=True)
-    img.save(SITE_DIR / "og-image.png")
-    print("og-image.png rendered (static)")
+    # Content-addressed filename: any change to the card changes the URL, so no
+    # social-platform cache can ever serve a stale copy. Old files are removed.
+    import hashlib, io
+    buf = io.BytesIO(); img.save(buf, format="PNG")
+    # Hash the card's CONTENT SPEC (not the pixels): pixel output varies by
+    # font availability across machines, but the URL should only change when
+    # the design actually changes.
+    digest = hashlib.sha1(CARD_SPEC.encode()).hexdigest()[:10]
+    for old in SITE_DIR.glob("og-card-*.png"):
+        old.unlink()
+    name = f"og-card-{digest}.png"
+    (SITE_DIR / name).write_bytes(buf.getvalue())
+    (SITE_DIR / "og-image.png").write_bytes(buf.getvalue())  # legacy path, still valid
+    (SITE_DIR / "og-card.txt").write_text(name)
+    print(f"{name} rendered (static)")
 
 
 if __name__ == "__main__":

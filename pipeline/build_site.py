@@ -22,12 +22,12 @@ TEMPLATE = r"""<!DOCTYPE html>
 <meta property="og:title" content="Flock Crime Prevention Tracker">
 <meta property="og:description" content="A daily-updated, independently sourced database of Flock Safety cameras helping solve or prevent crimes.">
 <meta property="og:url" content="https://flockstopscrime.com/">
-<meta property="og:image" content="https://flockstopscrime.com/og-image.png">
+<meta property="og:image" content="https://flockstopscrime.com/__OG_IMAGE__">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://flockstopscrime.com/og-image.png">
+<meta name="twitter:image" content="https://flockstopscrime.com/__OG_IMAGE__">
 <style>
   :root {
     --ground: #f6f8fb;
@@ -616,6 +616,9 @@ def build_site() -> None:
     (SITE_DIR / "CNAME").write_text("flockstopscrime.com\n")
     from make_og_image import make_og_image
     make_og_image()
+    og_name = (SITE_DIR / "og-card.txt").read_text().strip()
+    html = html.replace("__OG_IMAGE__", og_name)
+    (SITE_DIR / "index.html").write_text(html, encoding="utf-8")
     if STORIES_CSV.exists():
         shutil.copy(STORIES_CSV, SITE_DIR / "stories.csv")
     if COURT_CSV.exists():

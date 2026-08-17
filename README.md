@@ -26,6 +26,26 @@ as a static site via GitHub Pages.
 The daily job runs via GitHub Actions ([.github/workflows/daily.yml](.github/workflows/daily.yml));
 its commit history is an audit log of what was added each day.
 
+## Inclusion criteria
+
+A record must describe a **specific criminal incident** in which a Flock license-plate-reader
+camera contributed to a **concrete outcome**: an arrest, the recovery of stolen property, the
+prevention of a crime in progress, or the identification of a suspect who was subsequently
+charged. Locating and apprehending an already-wanted suspect counts — the database is about
+cameras helping police solve and prevent crime, not about cameras working alone.
+
+**Excluded by rule:**
+- missing-person recoveries with no underlying crime
+- cases with no resolved outcome at publication (a lead is not a solve)
+- aggregate deployment statistics ("28 vehicles recovered in 60 days") with no specific incident
+- Flock's audio gunshot-detection products (Raven) — this database is cameras only
+- vendor press releases (GlobeNewswire, flocksafety.com) without independent news coverage
+- camera-error and wrongful-stop stories, even where police acted on the hit
+- privacy/policy debates, procurement news, and stories where the camera's role is speculative
+
+These rules were sharpened by two adversarial reviews (August 2026); see
+[docs/adversarial-review-protocol.md](docs/adversarial-review-protocol.md).
+
 ## Caveats
 
 - Entries reflect claims made in news reports, which typically rely on police statements.

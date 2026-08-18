@@ -7,6 +7,13 @@ import subprocess
 from config import REPO_ROOT
 
 
+def _branch() -> str:
+    out = subprocess.run(["git", "-C", str(REPO_ROOT), "rev-parse", "--abbrev-ref", "HEAD"],
+                         capture_output=True, text=True)
+    b = out.stdout.strip()
+    return b if b and b != "HEAD" else "main"
+
+
 def push_progress(message: str) -> None:
     git = ["git", "-C", str(REPO_ROOT),
            "-c", "user.name=flock-tracker-bot",
@@ -17,7 +24,7 @@ def push_progress(message: str) -> None:
         if diff.returncode == 0:
             return
         subprocess.run(git + ["commit", "-m", message], check=True, capture_output=True)
-        subprocess.run(git + ["pull", "--rebase", "--autostash", "origin", "main"],
+        subprocess.run(git + ["pull", "--rebase", "--autostash", "origin", _branch()],
                        check=True, capture_output=True)
         subprocess.run(git + ["push"], check=True, capture_output=True)
     except subprocess.CalledProcessError as e:

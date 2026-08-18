@@ -227,7 +227,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   </section>
 
   <footer>
-    <p>Created by <a href="https://x.com/charlesflehman">Charles Fain Lehman</a>.</p>
+    <p>Created by <a href="https://x.com/charlesflehman">Charles Fain Lehman</a>. Not affiliated with Flock or any other company.</p>
     <p>Built and maintained in collaboration with <a href="https://claude.com">Claude</a> (Anthropic).
     Claude wrote the data pipeline and this site, and runs the daily update: gathering candidate
     articles via <a href="https://www.gdeltproject.org/">GDELT</a> and Google News, reading and

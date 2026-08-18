@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What the Research Says · Flock Crime Prevention Tracker</title>
+<style>
+  :root {
+    --ground: #f6f8fb; --card: #ffffff; --ink: #2b3440; --ink-strong: #131a22;
+    --muted: #64748b; --accent: #2a78d6; --accent-deep: #1c5cab; --hairline: #dde4ed;
+    --grid: #e9eef5; --tint: #e6eefb;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.6; }
+  a { color: var(--accent-deep); }
+  .topbar { background: var(--card); border-bottom: 1px solid var(--hairline); }
+  .topbar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 20px; }
+  .brand { font-weight: 700; color: var(--ink-strong); text-decoration: none; }
+  .brand span { color: var(--muted); font-weight: 400; }
+  .topnav a { font-size: 0.88rem; margin-left: 18px; text-decoration: none; border-bottom: 1px solid transparent; }
+  .topnav a.active { border-bottom-color: var(--accent-deep); }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+
+  .layout { display: grid; grid-template-columns: 200px minmax(0, 700px); gap: 56px;
+    max-width: 1100px; margin: 0 auto; padding: 48px 20px 80px; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; gap: 24px; } .toc { display: none; } .wide { margin: 32px 0 !important; } }
+  .toc { position: sticky; top: 24px; align-self: start; font-size: 0.85rem; }
+  .toc h4 { margin: 0 0 8px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .toc a { display: block; padding: 5px 0 5px 12px; color: var(--muted); text-decoration: none; border-left: 2px solid var(--hairline); }
+  .toc a.sub { padding-left: 24px; font-size: 0.8rem; }
+  .toc a:hover, .toc a.on { color: var(--accent-deep); border-left-color: var(--accent); }
+
+  .kicker { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-deep); font-weight: 600; }
+  h1 { font-size: 2.4rem; line-height: 1.15; margin: 8px 0 14px; color: var(--ink-strong); letter-spacing: -0.02em; }
+  .dek { font-family: Georgia, serif; font-style: italic; font-size: 1.2rem; color: var(--muted); margin: 0 0 14px; }
+  .byline { font-size: 0.85rem; color: var(--muted); margin-bottom: 36px; }
+  h2 { font-size: 1.45rem; margin: 52px 0 12px; color: var(--ink-strong); letter-spacing: -0.01em; scroll-margin-top: 20px; }
+  h3 { font-size: 1.05rem; margin: 30px 0 8px; color: var(--ink-strong); scroll-margin-top: 20px; }
+  p { margin: 0 0 18px; font-size: 1.04rem; }
+  .lede::first-letter { float: left; font-size: 3.6rem; line-height: 0.85; padding: 6px 8px 0 0; color: var(--accent-deep); font-weight: 700; }
+
+  .takeaway { background: var(--card); border: 1px solid var(--hairline); border-left: 4px solid var(--accent);
+    border-radius: 10px; padding: 18px 22px; margin: 28px 0; }
+  .takeaway h4 { margin: 0 0 8px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-deep); }
+  .takeaway ul { margin: 0; padding-left: 18px; } .takeaway li { margin-bottom: 6px; }
+  blockquote.pull { margin: 32px 0; padding: 0 0 0 22px; border-left: 3px solid var(--accent);
+    font-family: Georgia, serif; font-style: italic; font-size: 1.3rem; line-height: 1.4; color: var(--ink-strong); }
+  blockquote.pull cite { display: block; margin-top: 8px; font-size: 0.85rem; font-style: normal; font-family: system-ui, sans-serif; color: var(--muted); }
+
+  figure { margin: 32px 0; background: var(--card); border: 1px solid var(--hairline); border-radius: 12px; padding: 20px 22px 14px; }
+  figure .fig-title { font-weight: 700; color: var(--ink-strong); margin: 0 0 2px; font-size: 1rem; }
+  figure .fig-sub { color: var(--muted); font-size: 0.85rem; margin: 0 0 14px; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: 0.8rem; color: var(--muted); margin-top: 12px; line-height: 1.45; }
+  .wide { margin-left: -120px; margin-right: -120px; }
+
+  /* ---- TIER 1: hero study card ---- */
+  .hero-study { background: linear-gradient(135deg, #1c5cab 0%, #2a78d6 100%); color: #fff; border-radius: 14px;
+    padding: 24px 28px; margin: 28px 0; box-shadow: 0 6px 24px rgba(28,92,171,0.22); }
+  .hero-study .label { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.85; }
+  .hero-study .cite { font-size: 1.25rem; font-weight: 700; margin: 6px 0 4px; }
+  .hero-study .design { font-size: 0.95rem; opacity: 0.92; margin-bottom: 16px; }
+  .hero-study .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; }
+  .hero-study .fact .n { font-size: 1.5rem; font-weight: 700; line-height: 1.1; }
+  .hero-study .fact .l { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
+  .hero-study a { color: #fff; }
+
+  /* ---- TIER 2: brief individual study cards ---- */
+  .study-card { display: grid; grid-template-columns: 1fr 190px; gap: 20px; background: var(--card);
+    border: 1px solid var(--hairline); border-radius: 12px; padding: 18px 20px; margin: 18px 0; }
+  @media (max-width: 700px) { .study-card { grid-template-columns: 1fr; } }
+  .study-card .cite { font-weight: 700; color: var(--ink-strong); margin: 0 0 4px; }
+  .study-card .meta { font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; }
+  .study-card p { font-size: 0.95rem; margin: 0; }
+  .study-card .verdict { border-left: 1px solid var(--grid); padding-left: 18px; font-size: 0.85rem; }
+  .study-card .verdict .v-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .study-card .verdict .v-val { font-weight: 700; color: var(--ink-strong); margin: 2px 0 8px; }
+  .study-card .verdict .conf { display: flex; gap: 3px; margin-top: 4px; }
+  .study-card .verdict .conf i { width: 22px; height: 6px; border-radius: 3px; background: var(--grid); display: inline-block; }
+  .study-card .verdict .conf i.on { background: var(--accent); }
+  .tag { display: inline-block; border-radius: 999px; padding: 1px 9px; font-size: 0.74rem; font-weight: 600; white-space: nowrap; }
+  .tag.pos { background: var(--tint); color: var(--accent-deep); }
+  .tag.null { background: #eef0f3; color: #4b5563; }
+  .tag.mixed { background: #fff4d6; color: #92400e; }
+
+  /* ---- TIER 3: grouped list ---- */
+  .group-list { list-style: none; padding: 0; margin: 16px 0 24px; }
+  .group-list li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 12px 0; border-top: 1px solid var(--grid); font-size: 0.95rem; }
+  .group-list li:last-child { border-bottom: 1px solid var(--grid); }
+  .group-list .num { width: 28px; height: 28px; border-radius: 50%; background: var(--tint); color: var(--accent-deep);
+    font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; }
+  .group-list .cite { font-weight: 600; color: var(--ink-strong); }
+  .group-list .meta { color: var(--muted); font-size: 0.85rem; }
+
+  .refs { font-size: 0.88rem; } .refs ol { padding-left: 20px; } .refs li { margin-bottom: 8px; }
+  footer { border-top: 1px solid var(--hairline); margin-top: 60px; padding: 18px 20px 40px; font-family: Georgia, serif;
+    font-style: italic; font-size: 0.85rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="wrap">
+  <a class="brand" href="/">Flock Crime Prevention Tracker <span>· flockstopscrime.com</span></a>
+  <nav class="topnav"><a href="/">Database</a><a href="/research/" class="active">Research</a><a href="https://github.com/CharlesFainLehman/flock-crime-tracker">Data &amp; code</a></nav>
+</div></div>
+
+<div class="layout">
+  <nav class="toc">
+    <h4>Contents</h4>
+    <a href="#summary" class="on">Summary</a>
+    <a href="#best-evidence">The best evidence</a>
+    <a href="#alpr-studies">Other ALPR studies</a>
+    <a href="#s1" class="sub">Study 1</a>
+    <a href="#s2" class="sub">Study 2</a>
+    <a href="#s3" class="sub">Study 3</a>
+    <a href="#cameras">Cameras more broadly</a>
+    <a href="#tracker">Where the tracker fits</a>
+    <a href="#references">References</a>
+  </nav>
+
+  <article>
+    <div class="kicker">Research review</div>
+    <h1>What the Research Says About License-Plate Readers and Crime</h1>
+    <p class="dek">A working review of the eight studies that bear most directly on whether ALPRs and fixed cameras reduce crime — one strong paper, three weaker ones, and the broader camera literature.</p>
+    <div class="byline">By Charles Fain Lehman · Last revised August 2026 · <a href="#references">References</a></div>
+
+    <div class="takeaway">
+      <h4>Key takeaways</h4>
+      <ul>
+        <li><em>[Placeholder]</em> The single best study — a difference-in-differences working paper — finds ___.</li>
+        <li><em>[Placeholder]</em> Three weaker ALPR-specific studies point the same direction but with real design limits.</li>
+        <li><em>[Placeholder]</em> The quasi-experimental camera literature more broadly suggests ___, especially for vehicle crime.</li>
+      </ul>
+    </div>
+
+    <h2 id="summary">Summary</h2>
+    <p class="lede">Placeholder lede. The literature on automated license-plate readers is small — a handful of studies, one of which is markedly stronger than the rest — but it sits inside a larger and better-developed literature on cameras and crime. This review takes each in turn.</p>
+
+    <!-- ============ TIER 1 ============ -->
+    <h2 id="best-evidence">The best evidence: a difference-in-differences study</h2>
+    <p>Placeholder paragraph introducing the working paper: who, where, what data, why the design is credible.</p>
+
+    <div class="hero-study">
+      <div class="label">The strongest study</div>
+      <div class="cite">Author &amp; Author (2025), "Title of the Working Paper"</div>
+      <div class="design">Difference-in-differences · staggered ALPR adoption across N agencies · [outcome data source] · [years]</div>
+      <div class="facts">
+        <div class="fact"><div class="n">−__%</div><div class="l">effect on [outcome]</div></div>
+        <div class="fact"><div class="n">N = ___</div><div class="l">agencies / units</div></div>
+        <div class="fact"><div class="n">____–____</div><div class="l">study period</div></div>
+        <div class="fact"><div class="n">p &lt; 0.__</div><div class="l">significance</div></div>
+      </div>
+    </div>
+
+    <p>Placeholder walk-through of the paper's design, main result, robustness checks, and the limits you want readers to hold in mind. This section carries the page's main figure:</p>
+
+    <figure class="wide">
+      <p class="fig-title">Event-study estimates around ALPR adoption</p>
+      <p class="fig-sub">Coefficients relative to the year before adoption, with 95% confidence bands. <strong>Illustrative placeholder values.</strong></p>
+      <svg viewBox="0 0 900 320" role="img" aria-label="Event-study plot (placeholder)">
+        <!-- gridlines -->
+        <g stroke="#e9eef5"><line x1="70" y1="40" x2="880" y2="40"/><line x1="70" y1="100" x2="880" y2="100"/><line x1="70" y1="160" x2="880" y2="160"/><line x1="70" y1="220" x2="880" y2="220"/><line x1="70" y1="280" x2="880" y2="280"/></g>
+        <!-- zero line -->
+        <line x1="70" y1="160" x2="880" y2="160" stroke="#94a3b8" stroke-width="1.5"/>
+        <!-- adoption marker -->
+        <line x1="475" y1="30" x2="475" y2="290" stroke="#c2410c" stroke-dasharray="5 4"/>
+        <text x="482" y="44" font-size="12" fill="#c2410c">ALPR adoption</text>
+        <!-- y labels -->
+        <g font-size="11" fill="#64748b" text-anchor="end"><text x="62" y="44">+20%</text><text x="62" y="104">+10%</text><text x="62" y="164">0</text><text x="62" y="224">−10%</text><text x="62" y="284">−20%</text></g>
+        <!-- x labels -->
+        <g font-size="11" fill="#64748b" text-anchor="middle"><text x="115" y="308">−4</text><text x="205" y="308">−3</text><text x="295" y="308">−2</text><text x="385" y="308">−1</text><text x="475" y="308">0</text><text x="565" y="308">+1</text><text x="655" y="308">+2</text><text x="745" y="308">+3</text><text x="835" y="308">+4</text></g>
+        <text x="475" y="318" font-size="10" fill="#94a3b8" text-anchor="middle" dy="-2"></text>
+        <!-- CI band (pre ~ flat around 0; post drops) -->
+        <path d="M115,140 L205,138 L295,142 L385,145 L475,160 L565,205 L655,222 L745,232 L835,236 L835,278 L745,272 L655,262 L565,240 L475,190 L385,178 L295,176 L205,172 L115,176 Z" fill="#2a78d6" fill-opacity="0.13"/>
+        <!-- point estimates -->
+        <polyline points="115,158 205,155 295,159 385,161 475,175 565,222 655,242 745,252 835,257" fill="none" stroke="#2a78d6" stroke-width="2.5"/>
+        <g fill="#2a78d6" stroke="#fff" stroke-width="2"><circle cx="115" cy="158" r="5"/><circle cx="205" cy="155" r="5"/><circle cx="295" cy="159" r="5"/><circle cx="385" cy="161" r="5"/><circle cx="475" cy="175" r="5"/><circle cx="565" cy="222" r="5"/><circle cx="655" cy="242" r="5"/><circle cx="745" cy="252" r="5"/><circle cx="835" cy="257" r="5"/></g>
+        <text x="475" y="300" font-size="11" fill="#64748b" text-anchor="middle" dy="18">Years relative to adoption</text>
+      </svg>
+      <figcaption>Flat pre-trends and a post-adoption decline are the shape a credible diff-in-diff result takes; the values here are placeholders until we plot the paper's actual coefficients. Source: Author &amp; Author (2025), Figure __.</figcaption>
+    </figure>
+
+    <blockquote class="pull">"A pull-quote from the paper, or your one-line verdict on it, would sit here."<cite>— Author &amp; Author (2025)</cite></blockquote>
+
+    <!-- ============ TIER 2 ============ -->
+    <h2 id="alpr-studies">Other ALPR studies</h2>
+    <p>Placeholder framing: three further studies look at ALPRs specifically. Each is weaker than the paper above — for reasons noted on each card — but worth a brief individual look.</p>
+
+    <div class="study-card" id="s1">
+      <div>
+        <div class="cite">Author (Year), "Title"</div>
+        <div class="meta">Setting · Design (e.g., randomized patrol routes) · Outcome</div>
+        <p>Two or three sentences: what they did, what they found, and the one design limitation that keeps this from being decisive.</p>
+      </div>
+      <div class="verdict">
+        <div class="v-label">Finding</div><div class="v-val"><span class="tag pos">Reduction</span></div>
+        <div class="v-label">Evidence strength</div>
+        <div class="conf"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+        <div class="v-label" style="margin-top:8px">Key limit</div><div style="color:var(--ink)">Small N; short follow-up</div>
+      </div>
+    </div>
+
+    <div class="study-card" id="s2">
+      <div>
+        <div class="cite">Author (Year), "Title"</div>
+        <div class="meta">Setting · Design · Outcome</div>
+        <p>Two or three sentences of summary and critique.</p>
+      </div>
+      <div class="verdict">
+        <div class="v-label">Finding</div><div class="v-val"><span class="tag mixed">Mixed</span></div>
+        <div class="v-label">Evidence strength</div>
+        <div class="conf"><i class="on"></i><i></i><i></i><i></i></div>
+        <div class="v-label" style="margin-top:8px">Key limit</div><div style="color:var(--ink)">No control group</div>
+      </div>
+    </div>
+
+    <div class="study-card" id="s3">
+      <div>
+        <div class="cite">Author (Year), "Title"</div>
+        <div class="meta">Setting · Design · Outcome</div>
+        <p>Two or three sentences of summary and critique.</p>
+      </div>
+      <div class="verdict">
+        <div class="v-label">Finding</div><div class="v-val"><span class="tag null">No effect</span></div>
+        <div class="v-label">Evidence strength</div>
+        <div class="conf"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+        <div class="v-label" style="margin-top:8px">Key limit</div><div style="color:var(--ink)">Underpowered</div>
+      </div>
+    </div>
+
+    <!-- ============ TIER 3 ============ -->
+    <h2 id="cameras">Cameras more broadly</h2>
+    <p>Placeholder framing: four quasi-experimental studies of cameras in general — not ALPRs specifically — that together establish what we should expect from fixed surveillance of public space. Treated as a group; individually:</p>
+
+    <ul class="group-list">
+      <li><span class="num">1</span><div><span class="cite">Author (Year)</span> — <span class="meta">City, design, outcome.</span> One-line takeaway.</div></li>
+      <li><span class="num">2</span><div><span class="cite">Author (Year)</span> — <span class="meta">City, design, outcome.</span> One-line takeaway.</div></li>
+      <li><span class="num">3</span><div><span class="cite">Author (Year)</span> — <span class="meta">City, design, outcome.</span> One-line takeaway.</div></li>
+      <li><span class="num">4</span><div><span class="cite">Author (Year)</span> — <span class="meta">City, design, outcome.</span> One-line takeaway.</div></li>
+    </ul>
+
+    <figure>
+      <p class="fig-title">The four camera studies at a glance</p>
+      <p class="fig-sub">Estimated effect on the study's primary crime outcome. <strong>Placeholder values.</strong></p>
+      <svg viewBox="0 0 700 210" role="img" aria-label="Effect estimates for four camera studies (placeholder)">
+        <line x1="420" y1="20" x2="420" y2="185" stroke="#94a3b8" stroke-dasharray="4 4"/>
+        <text x="420" y="205" text-anchor="middle" font-size="11" fill="#64748b">0 (no effect)</text>
+        <text x="260" y="205" text-anchor="middle" font-size="11" fill="#64748b">−20%</text>
+        <text x="100" y="205" text-anchor="middle" font-size="11" fill="#64748b">−40%</text>
+        <text x="580" y="205" text-anchor="middle" font-size="11" fill="#64748b">+20%</text>
+        <g font-size="13" fill="#2b3440">
+          <text x="10" y="45">1 · Author (Year)</text><line x1="230" y1="40" x2="380" y2="40" stroke="#2a78d6" stroke-width="2"/><rect x="299" y="34" width="12" height="12" fill="#2a78d6"/>
+          <text x="10" y="85">2 · Author (Year)</text><line x1="290" y1="80" x2="470" y2="80" stroke="#94a3b8" stroke-width="2"/><rect x="374" y="74" width="12" height="12" fill="#94a3b8"/>
+          <text x="10" y="125">3 · Author (Year)</text><line x1="180" y1="120" x2="330" y2="120" stroke="#2a78d6" stroke-width="2"/><rect x="249" y="114" width="12" height="12" fill="#2a78d6"/>
+          <text x="10" y="165">4 · Author (Year)</text><line x1="330" y1="160" x2="500" y2="160" stroke="#94a3b8" stroke-width="2"/><rect x="409" y="154" width="12" height="12" fill="#94a3b8"/>
+        </g>
+      </svg>
+      <figcaption>Blue = statistically significant; gray = not. Placeholder estimates to be replaced.</figcaption>
+    </figure>
+
+    <h2 id="tracker">Where the tracker fits</h2>
+    <p>Placeholder: the studies above mostly measure <em>deterrence</em> — whether crime falls. The tracker documents <em>investigative yield</em> — crimes solved with camera help. Both matter; they answer different questions. Link to filtered database views, e.g. <a href="/#crime=vehicle%20theft">vehicle-theft cases</a>.</p>
+
+    <h2 id="references">References</h2>
+    <div class="refs"><ol>
+      <li>Author &amp; Author. (2025). Working paper title. <em>SSRN / NBER</em>. <a href="#">Link</a></li>
+      <li>Author. (Year). Title. <em>Journal</em>. <a href="#">DOI</a></li>
+      <li>Author. (Year). Title. <em>Journal</em>. <a href="#">DOI</a></li>
+      <li>Author. (Year). Title. <em>Journal</em>. <a href="#">DOI</a></li>
+      <li>… (four camera studies)</li>
+    </ol></div>
+  </article>
+</div>
+
+<footer><div class="wrap">Part of the Flock Crime Prevention Tracker · Created by <a href="https://x.com/charlesflehman">Charles Fain Lehman</a> · Built with Claude.</div></footer>
+<script>
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var heads = links.map(function (a) { return document.querySelector(a.getAttribute('href')); });
+  function onScroll() { var y = window.scrollY + 90, idx = 0; heads.forEach(function (h, i) { if (h && h.offsetTop <= y) idx = i; }); links.forEach(function (a, i) { a.classList.toggle('on', i === idx); }); }
+  window.addEventListener('scroll', onScroll); onScroll();
+</script>
+</body>
+</html>

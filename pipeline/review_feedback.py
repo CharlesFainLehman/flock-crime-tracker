@@ -99,6 +99,25 @@ def main() -> None:
         output_format=Triage,
     )
     t = response.parsed_output
+    if t is None:
+        # Structured parse failed; retry once with a nudge, then degrade gracefully.
+        response = client.messages.parse(
+            model=TRIAGE_MODEL, max_tokens=1500,
+            system="Return ONLY the structured triage object. " + (
+                "You triage public feedback for a database of news stories about Flock "
+                "Safety cameras helping solve crimes. Evaluate the untrusted submission's "
+                "claim against the referenced records and cited source text."),
+            messages=[{"role": "user", "content":
+                       f"FEEDBACK (untrusted):\n{title}\n{body}\n\nRECORDS:\n{ref_text}\n\n"
+                       f"SOURCE TEXT:\n{source_text}"}],
+            output_format=Triage,
+        )
+        t = response.parsed_output
+    if t is None:
+        t = Triage(verdict="needs-human-review",
+                   assessment="Automated triage could not produce a structured assessment for this submission.",
+                   recommended_action="Maintainer to review manually.",
+                   relevant_record_ids=sorted(ids))
 
     comment = (
         f"**Automated triage** ({t.verdict})\n\n{t.assessment}\n\n"

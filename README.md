@@ -42,8 +42,13 @@ cameras helping police solve and prevent crime, not about cameras working alone.
 - vendor press releases (GlobeNewswire, flocksafety.com) without independent news coverage
 - camera-error and wrongful-stop stories, even where police acted on the hit
 - privacy/policy debates, procurement news, and stories where the camera's role is speculative
+- cases identified by facial recognition rather than by the camera's plate or vehicle evidence
+- cases where the only crime was stealing or vandalizing a Flock camera and its own image
+  identified the culprit (self-referential)
+- Flock's non-camera products (audio gunshot detection, drones)
 
-These rules were sharpened by two adversarial reviews (August 2026); see
+These rules were sharpened by three adversarial reviews (August 2026), two of them
+independent of the maintainer; see
 [docs/adversarial-review-protocol.md](docs/adversarial-review-protocol.md).
 
 ## Caveats

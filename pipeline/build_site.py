@@ -599,19 +599,23 @@ def build_site() -> None:
 
     payload = json.dumps(stories, ensure_ascii=False).replace("</", "<\\/")
     court_payload = json.dumps(courts, ensure_ascii=False).replace("</", "<\\/")
+
+    # Render the social card and resolve its filename FIRST: writing index.html
+    # before substituting __OG_IMAGE__ means any failure in between leaves a
+    # deployable page whose og:image points at a URL that does not exist.
+    from make_og_image import make_og_image
+    make_og_image()
+    og_name = (SITE_DIR / "og-card.txt").read_text().strip()
+
     html = (TEMPLATE
             .replace("__DATA_JSON__", payload)
             .replace("__COURT_JSON__", court_payload)
             .replace("__USMAP__", _load_usmap())
-            .replace("__UPDATED__", date.today().strftime("%B %-d, %Y")))
+            .replace("__UPDATED__", date.today().strftime("%B %-d, %Y"))
+            .replace("__OG_IMAGE__", og_name))
+    assert "__OG_IMAGE__" not in html
     (SITE_DIR / "index.html").write_text(html, encoding="utf-8")
-
     (SITE_DIR / "CNAME").write_text("flockstopscrime.com\n")
-    from make_og_image import make_og_image
-    make_og_image()
-    og_name = (SITE_DIR / "og-card.txt").read_text().strip()
-    html = html.replace("__OG_IMAGE__", og_name)
-    (SITE_DIR / "index.html").write_text(html, encoding="utf-8")
     if STORIES_CSV.exists():
         shutil.copy(STORIES_CSV, SITE_DIR / "stories.csv")
     if COURT_CSV.exists():

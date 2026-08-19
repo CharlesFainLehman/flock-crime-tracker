@@ -34,6 +34,25 @@ GDELT_STATS = {"calls": 0, "retries": 0, "gave_up": 0}
 SKIP_DOMAINS = ("flocksafety.com", "prnewswire.com", "businesswire.com",
                 "globenewswire.com", "streetinsider.com")
 
+# Path fragments marking press releases republished through wire/syndication
+# sections of otherwise ordinary outlets.
+SKIP_URL_FRAGMENTS = ("newswire", "press_release", "online_features",
+                      "/region/flock-", "news/national/flock-")
+
+
+def is_vendor_or_wire(url: str, domain: str = "") -> bool:
+    """True for vendor press releases and wire syndication. validate_data.py
+    rejects these as primary sources, so every discovery path must filter them
+    or the daily run's commit step fails on data it just wrote."""
+    low = (url or "").lower()
+    hay = domain.lower() if domain else low
+    # Match the bare stem too: Google News reports the outlet as "PRNewswire",
+    # not as a hostname, and its article link stays an opaque redirect.
+    stems = [d.rsplit(".", 1)[0] for d in SKIP_DOMAINS]
+    return (any(skip in hay for skip in SKIP_DOMAINS)
+            or any(stem in hay for stem in stems)
+            or any(k in low for k in SKIP_URL_FRAGMENTS))
+
 
 def _normalize(candidate: dict) -> dict:
     candidate["url"] = candidate["url"].strip()
@@ -77,12 +96,7 @@ def gdelt_search(query: str, start: datetime, end: datetime, max_records: int = 
     for a in articles:
         domain = a.get("domain", "")
         url = a.get("url", "")
-        if any(skip in domain for skip in SKIP_DOMAINS):
-            continue
-        low = url.lower()
-        # press releases republished through wire/syndication sections
-        if any(k in low for k in ("newswire", "press_release", "online_features",
-                                  "/region/flock-", "news/national/flock-")):
+        if is_vendor_or_wire(url, domain):
             continue
         seendate = a.get("seendate", "")  # e.g. 20250811T120000Z
         published = ""
@@ -132,6 +146,8 @@ def google_news_search(query: str) -> list[dict]:
         if entry.get("published_parsed"):
             published = time.strftime("%Y-%m-%d", entry.published_parsed)
         snippet = re.sub(r"<[^>]+>", " ", entry.get("summary", ""))
+        if is_vendor_or_wire(decoded or "", source.replace(" ", "").lower()):
+            continue
         out.append(_normalize({
             "url": decoded or link,
             "title": entry.get("title", ""),

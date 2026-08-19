@@ -4,7 +4,7 @@ import anthropic
 
 from classify import classify_article
 from dedupe import check_duplicate
-from fetch import fetch_article_text, resolve_candidate
+from fetch import fetch_article_text, is_vendor_or_wire, resolve_candidate
 from store import make_row, next_story_id
 
 _VARIANT_SEGMENTS = ("/gallery/", "/newsletter/gallery/", "/newsletter/", "/amp/", "/photos/")
@@ -36,6 +36,15 @@ def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
             continue
         resolve_candidate(candidate)  # decode Google News redirects
         url = candidate["url"]
+        # Only now is a Google redirect's real domain visible. Vendor press
+        # releases are rejected by validate_data.py, so drop them before they
+        # can be written to the CSV.
+        if is_vendor_or_wire(url):
+            seen_urls.add(url)
+            if candidate.get("google_url"):
+                seen_urls.add(candidate["google_url"])
+            counts["rejected"] += 1
+            continue
         if canonical_url(url) in stored:   # same article, different URL form
             seen_urls.add(url)
             counts["duplicates"] += 1

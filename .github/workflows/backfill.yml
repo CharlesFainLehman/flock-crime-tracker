@@ -48,6 +48,7 @@ jobs:
         run: python pipeline/backfill.py --start "${{ inputs.start }}" --end "${{ inputs.end }}" --push-progress ${{ inputs.narrow && '--narrow' || '' }}
 
       - name: Commit updated data and site
+        id: commit
         if: always()  # keep checkpoint progress even if a late month errors
         run: |
           git config user.name "flock-tracker-bot"
@@ -61,15 +62,15 @@ jobs:
           git push
 
       - name: Configure Pages
-        if: always()
+        if: always() && steps.commit.outcome == 'success'
         uses: actions/configure-pages@v5
 
       - name: Upload site
-        if: always()
+        if: always() && steps.commit.outcome == 'success'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
       - name: Deploy to GitHub Pages
-        if: always()
+        if: always() && steps.commit.outcome == 'success'
         uses: actions/deploy-pages@v4

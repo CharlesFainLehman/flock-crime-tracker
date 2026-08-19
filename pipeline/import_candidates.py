@@ -10,6 +10,7 @@ line so long runs are observable.
 
 import argparse
 import json
+import os
 import sys
 import time
 
@@ -31,6 +32,8 @@ def main() -> None:
     cands = json.load(open(args.candidates))
     if args.limit:
         cands = cands[: args.limit]
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        sys.exit("ANTHROPIC_API_KEY is not set; refusing to run.")
     client = anthropic.Anthropic()
     stories = load_stories()
     seen = load_seen_urls()
@@ -55,6 +58,13 @@ def main() -> None:
             push_progress(f"Import progress: {line}")
 
     print(f"\nIMPORT DONE: {n0} -> {len(stories)} stories. {totals}")
+
+    # Same gate as the daily job: a run where most calls failed (bad key, no
+    # credits) must not report success just because it reached the end.
+    processed = (totals["new"] + totals["duplicates"]
+                 + totals["rejected"] + totals["errors"])
+    if processed and totals["errors"] > processed / 2:
+        sys.exit("More than half of processed candidates errored; failing the run.")
 
 
 if __name__ == "__main__":

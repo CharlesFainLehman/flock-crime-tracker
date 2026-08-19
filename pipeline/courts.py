@@ -14,7 +14,8 @@ import json
 import os
 import sys
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from typing import Literal, Optional
 
 import anthropic
@@ -46,6 +47,24 @@ def _headers() -> dict:
     return {"Authorization": f"Token {token}"} if token else {}
 
 
+def _retry_after(value: str | None, default: int) -> int:
+    """Retry-After is either a delay in seconds or an HTTP-date. int() on a
+    date raises ValueError outside the retry handler and kills the sweep."""
+    if not value:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        pass
+    try:
+        when = parsedate_to_datetime(value)
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=timezone.utc)
+        return max(0, int((when - datetime.now(timezone.utc)).total_seconds()))
+    except (TypeError, ValueError):
+        return default
+
+
 def _get(url: str, params: dict | None = None) -> dict:
     last_exc: Exception | None = None
     for attempt in range(5):
@@ -54,7 +73,7 @@ def _get(url: str, params: dict | None = None) -> dict:
             if resp.status_code == 429:
                 # Honor Retry-After; CourtListener throttles per-hour, so waits
                 # here are long by design.
-                wait = int(resp.headers.get("Retry-After") or 60 * (attempt + 1))
+                wait = _retry_after(resp.headers.get("Retry-After"), 60 * (attempt + 1))
                 print(f"  CourtListener 429; waiting {wait}s")
                 time.sleep(min(wait, 600))
                 continue
@@ -321,9 +340,31 @@ def main() -> None:
             counts["errors"] += 1
             continue
 
-        seen.add(cand["key"])
+        if cls.qualifies:
+            row = {
+                "id": str(next_id), "date_added": date.today().isoformat(),
+                "record_type": cls.record_type, "case_name": cand["case_name"],
+                "court": cand["court"], "state": cls.state or "",
+                "date_filed": cand["date_filed"], "crime_type": cls.crime_type or "",
+                "flock_role": cls.flock_role or "", "summary": cls.summary or "",
+                "source_url": cand["url"],
+                "matched_story_id": "", "confidence": cls.confidence,
+            }
+            row["matched_story_id"] = match_news_story(client, row, stories)
+            records.append(row)
+            next_id += 1
+            counts["new"] += 1
+            linked = f" (linked to story {row['matched_story_id']})" if row["matched_story_id"] else ""
+            print(f"  ADDED: {row['record_type']} | {row['court']} | {row['crime_type']}{linked}")
+        else:
+            print(f"  rejected: {cls.reason[:100]}")
+            counts["rejected"] += 1
 
-        # Checkpoint every 10 processed docs so interruptions lose little work.
+        # Mark seen only once this document's row (if any) is in `records`, and
+        # checkpoint both together: persisting the key first would let a crash
+        # here drop a classified record permanently, since the next run skips
+        # anything already in `seen`.
+        seen.add(cand["key"])
         if i % 10 == 0:
             save_court_records(records)
             with open(SEEN_JSON, "w", encoding="utf-8") as f:
@@ -331,27 +372,6 @@ def main() -> None:
             if args.push_progress:
                 push_progress(f"Court sweep progress {i}/{len(candidates)}: "
                               f"{counts['new']} added, {counts['rejected']} rejected")
-
-        if not cls.qualifies:
-            print(f"  rejected: {cls.reason[:100]}")
-            counts["rejected"] += 1
-            continue
-
-        row = {
-            "id": str(next_id), "date_added": date.today().isoformat(),
-            "record_type": cls.record_type, "case_name": cand["case_name"],
-            "court": cand["court"], "state": cls.state or "",
-            "date_filed": cand["date_filed"], "crime_type": cls.crime_type or "",
-            "flock_role": cls.flock_role or "", "summary": cls.summary or "",
-            "source_url": cand["url"],
-            "matched_story_id": "", "confidence": cls.confidence,
-        }
-        row["matched_story_id"] = match_news_story(client, row, stories)
-        records.append(row)
-        next_id += 1
-        counts["new"] += 1
-        linked = f" (linked to story {row['matched_story_id']})" if row["matched_story_id"] else ""
-        print(f"  ADDED: {row['record_type']} | {row['court']} | {row['crime_type']}{linked}")
 
     records.sort(key=lambda r: r["date_filed"], reverse=True)
     save_court_records(records)

@@ -16,6 +16,7 @@ import json
 import os
 import re
 import sys
+import uuid
 from typing import Literal, Optional
 
 import anthropic
@@ -43,6 +44,13 @@ def load_rows(path, id_filter=None):
     return rows
 
 
+def _record_id_field(body: str) -> str:
+    """The issue form renders each field as '### Label' followed by its value.
+    Return the Record ID field's value, or '' if the body isn't form-shaped."""
+    m = re.search(r"^###\s*Record ID\s*$(.*?)(?=^###|\Z)", body, re.M | re.S)
+    return m.group(1) if m else ""
+
+
 def fetch_cited_source(body: str) -> str:
     urls = re.findall(r"https?://[^\s)\"'>]+", body)
     for url in urls[:2]:
@@ -66,9 +74,15 @@ def main() -> None:
     if not body.strip():
         sys.exit("empty issue body")
 
-    # Pull candidate record ids mentioned in the submission.
-    ids = set(re.findall(r"\b(\d{1,4})\b", body)) & {
-        r["id"] for r in load_rows(DATA_DIR / "stories.csv")}
+    # Pull candidate record ids mentioned in the submission. Matching every bare
+    # number would drag in dates and times ("8/15/2026" -> records 8, 15, 2026),
+    # so read the issue form's Record ID field first and otherwise require an
+    # explicit "record/row/id/#" prefix.
+    ids = set(re.findall(r"\d{1,6}", _record_id_field(body))) | set(
+        re.findall(r"(?:record|row|id)\s*#?\s*(\d{1,6})\b", body, re.I)) | set(
+        re.findall(r"#(\d{1,6})\b", body))
+    ids &= {r["id"] for r in load_rows(DATA_DIR / "stories.csv")}
+    ids = set(sorted(ids, key=int)[:10])  # bound the prompt
     referenced = load_rows(DATA_DIR / "stories.csv", ids) if ids else []
     ref_text = "\n".join(
         f"id {r['id']}: {r['incident_date']} | {r['city']}, {r['state']} | "
@@ -127,9 +141,13 @@ def main() -> None:
     )
     out = os.environ.get("GITHUB_OUTPUT")
     if out:
+        # Random delimiter: `comment` contains model text derived from an
+        # untrusted issue body, and a fixed "EOF" line inside it would close
+        # the heredoc early and let the remainder set arbitrary step outputs.
+        delim = "ghadelim_" + uuid.uuid4().hex
         with open(out, "a") as f:
             f.write(f"verdict={t.verdict}\n")
-            f.write("comment<<EOF\n" + comment + "\nEOF\n")
+            f.write(f"comment<<{delim}\n" + comment + f"\n{delim}\n")
     print(comment)
 
 

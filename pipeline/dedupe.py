@@ -41,6 +41,15 @@ def find_candidates(new_row: dict, stories: list[dict]) -> list[dict]:
         if new_date and old_date and abs((new_date - old_date).days) > DATE_WINDOW_DAYS:
             continue
         out.append(s)
+    # Rank by date proximity before truncating: CSV order is neither
+    # chronological nor relevance-ranked, so a plain slice can drop the very
+    # row the new story duplicates.
+    def _distance(s: dict) -> tuple[int, int]:
+        old_date = _parse_date(s.get("incident_date", ""))
+        if not new_date or not old_date:
+            return (1, 0)  # undated rows sort after every dated one
+        return (0, abs((new_date - old_date).days))
+    out.sort(key=_distance)
     return out[:20]
 
 

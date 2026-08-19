@@ -9,9 +9,14 @@ on:
   push:
     branches: [main]
     paths:
+      # Site-generating code...
       - "pipeline/build_site.py"
       - "pipeline/make_og_image.py"
       - "pipeline/assets/**"
+      # ...and the data itself, so hand edits and merges publish without
+      # waiting for the next cron. Bot pushes use GITHUB_TOKEN, whose events
+      # do not trigger workflows, so the daily job cannot retrigger this.
+      - "data/**"
   workflow_dispatch:
 
 permissions:

@@ -7,6 +7,17 @@ from dedupe import check_duplicate
 from fetch import fetch_article_text, resolve_candidate
 from store import make_row, next_story_id
 
+_VARIANT_SEGMENTS = ("/gallery/", "/newsletter/gallery/", "/newsletter/", "/amp/", "/photos/")
+
+
+def canonical_url(url: str) -> str:
+    """Strip query strings and syndication path variants so the same article at
+    /news/x, /news/gallery/x and /newsletter/gallery/x compares equal."""
+    u = url.split("?")[0].split("#")[0].rstrip("/").lower()
+    for seg in _VARIANT_SEGMENTS:
+        u = u.replace(seg, "/")
+    return u
+
 
 def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
                        stories: list[dict], seen_urls: set[str]) -> dict:
@@ -15,6 +26,9 @@ def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
     Mutates `stories` and `seen_urls` in place. Returns counts for logging.
     """
     counts = {"new": 0, "duplicates": 0, "rejected": 0, "skipped_seen": 0, "errors": 0}
+    # Canonical forms of everything already stored, to catch same-article URL variants.
+    stored = {canonical_url(s_["source_url"]) for s_ in stories}
+    stored |= {canonical_url(u) for s_ in stories for u in s_.get("additional_sources", "").split() if u}
 
     for i, candidate in enumerate(candidates, 1):
         if candidate["url"] in seen_urls:
@@ -22,6 +36,10 @@ def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
             continue
         resolve_candidate(candidate)  # decode Google News redirects
         url = candidate["url"]
+        if canonical_url(url) in stored:   # same article, different URL form
+            seen_urls.add(url)
+            counts["duplicates"] += 1
+            continue
         if url in seen_urls:
             seen_urls.add(candidate.get("google_url", url))
             counts["skipped_seen"] += 1
@@ -65,6 +83,7 @@ def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
             continue
 
         stories.append(row)
+        stored.add(canonical_url(url))
         print(f"  ADDED: {row['city']}, {row['state']} | {row['crime_type']} | {row['outcome']}")
         counts["new"] += 1
 

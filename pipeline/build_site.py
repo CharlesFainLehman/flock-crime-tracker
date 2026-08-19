@@ -271,6 +271,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   ALL.forEach(function (r) { if (r.crime_type) ALL_CRIME_COUNTS[r.crime_type] = (ALL_CRIME_COUNTS[r.crime_type] || 0) + 1; });
   var ALL_CRIMES = Object.keys(ALL_CRIME_COUNTS).sort(function (a, b) { return ALL_CRIME_COUNTS[b] - ALL_CRIME_COUNTS[a]; }).slice(0, 8);
 
+  var fmt = function (n) { return Number(n).toLocaleString("en-US"); };
   var esc = function (s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
@@ -318,14 +319,14 @@ TEMPLATE = r"""<!DOCTYPE html>
     var byCrime = {};
     rows.forEach(function (r) { if (r.crime_type) byCrime[r.crime_type] = (byCrime[r.crime_type] || 0) + 1; });
     var top = Object.keys(byCrime).sort(function (a, b) { return byCrime[b] - byCrime[a]; }).slice(0, 2);
-    document.getElementById("b-hero").textContent = rows.length;
+    document.getElementById("b-hero").textContent = fmt(rows.length);
     document.getElementById("b-label").textContent =
       "documented case" + (rows.length === 1 ? "" : "s") +
       " of Flock Safety cameras helping solve or prevent a crime";
     var subs = [];
-    subs.push({ n: states.size, l: "state" + (states.size === 1 ? "" : "s") });
+    subs.push({ n: fmt(states.size), l: "state" + (states.size === 1 ? "" : "s") });
     if (years.length) subs.push({ n: years[0] === years[years.length - 1] ? years[0] : years[0] + "\u2013" + years[years.length - 1], l: "coverage" });
-    top.forEach(function (k) { subs.push({ n: byCrime[k], l: k }); });
+    top.forEach(function (k) { subs.push({ n: fmt(byCrime[k]), l: k }); });
     document.getElementById("b-substats").innerHTML = subs.map(function (x) {
       return '<div class="substat"><div class="n">' + esc(x.n) + '</div><div class="l">' + esc(x.l) + "</div></div>";
     }).join("");
@@ -356,7 +357,7 @@ TEMPLATE = r"""<!DOCTYPE html>
       var fill = active ? "#2a78d6" : "#c9d8ee";
       var sel = fYear.value === k ? ' stroke="#131a22" stroke-width="2"' : "";
       s += '<rect data-year="' + esc(k) + '" class="' + (active ? "bar-on" : "bar-off") + '" style="cursor:pointer" x="' + x + '" y="' + y + '" width="' + w + '" height="' + Math.max(h, 1) + '" rx="4" fill="' + fill + '"' + sel + "/>";
-      s += '<text x="' + (x + w / 2) + '" y="' + (y - 5) + '" text-anchor="middle" font-size="11" fill="' + (active ? "#2b3440" : "#a4b0c0") + '">' + v + "</text>";
+      s += '<text x="' + (x + w / 2) + '" y="' + (y - 5) + '" text-anchor="middle" font-size="11" fill="' + (active ? "#2b3440" : "#a4b0c0") + '">' + fmt(v) + "</text>";
       s += '<text data-year="' + esc(k) + '" style="cursor:pointer" x="' + (x + w / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="' + (active ? "#64748b" : "#a4b0c0") + '">' + esc(k) + "</text>";
     });
     return s + "</svg>";
@@ -372,7 +373,7 @@ TEMPLATE = r"""<!DOCTYPE html>
       var w = Math.max(Math.round((W - labelW - 44) * v / max), 2);
       s += '<text x="' + (labelW - 8) + '" y="' + (y + rowH / 2 + 4) + '" text-anchor="end" font-size="11.5" fill="#2b3440">' + esc(k) + "</text>";
       s += '<rect x="' + labelW + '" y="' + (y + 4) + '" width="' + w + '" height="' + (rowH - 10) + '" rx="4" fill="#2a78d6"/>';
-      s += '<text x="' + (labelW + w + 6) + '" y="' + (y + rowH / 2 + 4) + '" font-size="11" fill="#2b3440">' + v + "</text>";
+      s += '<text x="' + (labelW + w + 6) + '" y="' + (y + rowH / 2 + 4) + '" font-size="11" fill="#2b3440">' + fmt(v) + "</text>";
     });
     return s + "</svg>";
   }
@@ -414,7 +415,7 @@ TEMPLATE = r"""<!DOCTYPE html>
       var sel = fCrime.value === k ? " selected" : (fCrime.value ? " faded" : "");
       return '<button class="tile' + sel + '" data-crime="' + esc(k) + '">' +
         (ICONS[k] || ICONS.other) +
-        '<span><span class="t-n">' + byCrime[k] + '</span><br><span class="t-l">' + esc(k) + "</span></span></button>";
+        '<span><span class="t-n">' + fmt(byCrime[k]) + '</span><br><span class="t-l">' + esc(k) + "</span></span></button>";
     }).join("");
     document.querySelectorAll(".tile").forEach(function (b) {
       b.addEventListener("click", function () {
@@ -450,7 +451,7 @@ TEMPLATE = r"""<!DOCTYPE html>
         if (!mapWired) {
           el.addEventListener("mousemove", function (e) {
             var cnt = (function () { var m = {}; filtered("state").forEach(function (r) { if (r.state) m[r.state] = (m[r.state] || 0) + 1; }); return m[code] || 0; })();
-            tip.textContent = code + ": " + cnt + " case" + (cnt === 1 ? "" : "s");
+            tip.textContent = code + ": " + fmt(cnt) + " case" + (cnt === 1 ? "" : "s");
             tip.style.display = "block";
             tip.style.left = (e.clientX + 14) + "px";
             tip.style.top = (e.clientY - 10) + "px";
@@ -499,7 +500,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     document.getElementById("rows").innerHTML =
       body || '<tr><td colspan="8" style="color:#64748b">No matching stories.</td></tr>';
     document.getElementById("count").textContent =
-      rows.length + " of " + ALL.length + " records";
+      fmt(rows.length) + " of " + fmt(ALL.length) + " records";
     document.getElementById("more").hidden = rows.length <= shown;
   }
 

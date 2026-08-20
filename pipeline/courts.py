@@ -182,13 +182,16 @@ def collect_candidates(filed_after: str | None) -> tuple[list[dict], int]:
     return list(candidates.values()), failed
 
 
+CrimeType = Literal[tuple(CRIME_TYPES)]  # type: ignore[valid-type]
+
+
 class CourtClassification(BaseModel):
     qualifies: bool
     reason: str
     record_type: Literal["warrant/affidavit", "complaint/indictment",
                          "suppression motion", "court order/opinion", "other"] = "other"
     state: Optional[str] = None  # two-letter code, blank for federal appellate
-    crime_type: Optional[str] = None
+    crime_type: Optional[CrimeType] = None
     flock_role: Optional[str] = None
     summary: Optional[str] = None
     confidence: Literal["high", "medium", "low"] = "low"

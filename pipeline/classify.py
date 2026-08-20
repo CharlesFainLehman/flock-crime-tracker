@@ -12,13 +12,19 @@ from pydantic import BaseModel
 from config import CLASSIFY_MODEL, CRIME_TYPES
 
 
+# Constrain crime_type at the parse layer: the schema advertises the enum and
+# the SDK retries on mismatch, so free-formed types ("arson", "sexual assault")
+# can never enter the CSV again.
+CrimeType = Literal[tuple(CRIME_TYPES)]  # type: ignore[valid-type]
+
+
 class StoryClassification(BaseModel):
     qualifies: bool
     reason: str
     incident_date: Optional[str] = None  # YYYY-MM-DD or YYYY-MM, best available
     city: Optional[str] = None
     state: Optional[str] = None  # two-letter US state/territory code
-    crime_type: Optional[str] = None
+    crime_type: Optional[CrimeType] = None
     camera_role: Optional[str] = None
     outcome: Optional[str] = None
     summary: Optional[str] = None

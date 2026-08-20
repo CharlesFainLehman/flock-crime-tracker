@@ -37,6 +37,12 @@ def main() -> None:
                 v = (r.get(field) or "")
                 if v and v[:10] > horizon:
                     fail(f"{p.name} id {r.get('id')}: {field} {v!r} is in the future")
+        if p.name in ("stories.csv", "court_records.csv"):
+            from config import CRIME_TYPES
+            bad_ct = [(r["id"], r["crime_type"]) for r in rows
+                      if r.get("crime_type") and r["crime_type"] not in CRIME_TYPES]
+            if bad_ct:
+                fail(f"{p.name}: crime_type outside the canonical vocabulary: {bad_ct[:5]}")
         if p.name == "stories.csv":
             import re
             vendor = re.compile(r"globenewswire|flocksafety\.com|prnewswire|businesswire|"

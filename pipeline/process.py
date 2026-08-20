@@ -9,14 +9,30 @@ from store import make_row, next_story_id
 
 _VARIANT_SEGMENTS = ("/gallery/", "/newsletter/gallery/", "/newsletter/", "/amp/", "/photos/")
 
+# Query parameters that never identify an article. Everything else is KEPT:
+# some sites key articles entirely by query string (woodlandsonline.com
+# story.cfm?nppage=N, ktbb.com/post/?p=N, auroragov.org ...&pageId=N), so
+# stripping the whole query made every article on those sites "the same URL"
+# and silently dropped real stories as duplicates.
+_TRACKING_PARAMS = ("utm_", "fbclid", "gclid", "mc_cid", "mc_eid", "ref",
+                    "ito", "share", "outputType", "taid", "cmpid")
+
 
 def canonical_url(url: str) -> str:
-    """Strip query strings and syndication path variants so the same article at
-    /news/x, /news/gallery/x and /newsletter/gallery/x compares equal."""
-    u = url.split("?")[0].split("#")[0].rstrip("/").lower()
+    """Normalize an article URL for duplicate comparison: lowercase, drop the
+    fragment and tracking parameters, and collapse syndication path variants
+    (/gallery/, /amp/, ...) so the same article compares equal."""
+    u = url.split("#")[0].strip().lower()
+    base, _, query = u.partition("?")
+    base = base.rstrip("/")
     for seg in _VARIANT_SEGMENTS:
-        u = u.replace(seg, "/")
-    return u
+        base = base.replace(seg, "/")
+    if query:
+        kept = [kv for kv in query.split("&")
+                if kv and not any(kv.startswith(t) for t in _TRACKING_PARAMS)]
+        if kept:
+            return base + "?" + "&".join(sorted(kept))
+    return base
 
 
 def process_candidates(client: anthropic.Anthropic, candidates: list[dict],

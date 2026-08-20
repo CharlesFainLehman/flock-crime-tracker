@@ -12,7 +12,7 @@ import base64
 import re
 import time
 from datetime import datetime, timedelta, timezone
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 import feedparser
 import requests
@@ -45,13 +45,19 @@ def is_vendor_or_wire(url: str, domain: str = "") -> bool:
     rejects these as primary sources, so every discovery path must filter them
     or the daily run's commit step fails on data it just wrote."""
     low = (url or "").lower()
-    hay = domain.lower() if domain else low
-    # Match the bare stem too: Google News reports the outlet as "PRNewswire",
-    # not as a hostname, and its article link stays an opaque redirect.
-    stems = [d.rsplit(".", 1)[0] for d in SKIP_DOMAINS]
-    return (any(skip in hay for skip in SKIP_DOMAINS)
-            or any(stem in hay for stem in stems)
-            or any(k in low for k in SKIP_URL_FRAGMENTS))
+    host = urlsplit(low).netloc if "://" in low else ""
+    if any(skip in host for skip in SKIP_DOMAINS):
+        return True
+    # Bare stems ("prnewswire") are matched ONLY against an outlet name/domain
+    # supplied by the caller — Google News reports "PRNewswire" without a
+    # hostname. Never against the full URL: a legit article slug like
+    # /flocksafety-credited-in-arrest must not be swallowed.
+    if domain:
+        hay = domain.lower()
+        stems = [d.rsplit(".", 1)[0] for d in SKIP_DOMAINS]
+        if any(skip in hay for skip in SKIP_DOMAINS) or any(st in hay for st in stems):
+            return True
+    return any(k in low for k in SKIP_URL_FRAGMENTS)
 
 
 def _normalize(candidate: dict) -> dict:

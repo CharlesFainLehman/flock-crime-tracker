@@ -6,6 +6,7 @@ import sys
 import anthropic
 
 from build_site import build_site
+from daily_adds import record_run
 from fetch import discover_daily
 from process import process_candidates
 from store import load_seen_urls, load_stories, save_seen_urls, save_stories
@@ -27,6 +28,7 @@ def main() -> None:
 
     save_stories(stories)
     save_seen_urls(seen)
+    record_run(counts["new"])
     build_site()
 
     print(f"\nDone. New: {counts['new']}, duplicates: {counts['duplicates']}, "

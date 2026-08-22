@@ -239,10 +239,32 @@ TEMPLATE = r"""<!DOCTYPE html>
 
 <script id="data" type="application/json">__DATA_JSON__</script>
 <script id="court-data" type="application/json">__COURT_JSON__</script>
+<script id="adds-data" type="application/json">__ADDS_JSON__</script>
 <script>
 (function () {
   var NEWS = JSON.parse(document.getElementById("data").textContent);
   var COURT = JSON.parse(document.getElementById("court-data").textContent);
+  // Typical stories/day from the daily-adds ledger (daily pipeline only;
+  // launch seed, backfills, and bulk imports never enter the ledger):
+  // the 25th-75th percentile range over the calendar span since tracking
+  // began, zero-filling days with no recorded run.
+  var ADDS_RANGE = (function () {
+    var adds = JSON.parse(document.getElementById("adds-data").textContent);
+    if (!adds.length) return null;
+    var byDate = {};
+    adds.forEach(function (r) { byDate[r.date] = +r.added || 0; });
+    var dates = Object.keys(byDate).sort();
+    var vals = [];
+    for (var t = Date.parse(dates[0]); t <= Date.parse(dates[dates.length - 1]); t += 86400000)
+      vals.push(byDate[new Date(t).toISOString().slice(0, 10)] || 0);
+    vals.sort(function (a, b) { return a - b; });
+    var pct = function (p) {
+      var idx = p * (vals.length - 1), lo = Math.floor(idx);
+      return Math.round(vals[lo] + (vals[Math.min(lo + 1, vals.length - 1)] - vals[lo]) * (idx - lo));
+    };
+    var p25 = pct(0.25), p75 = pct(0.75);
+    return p25 === p75 ? String(p25) : p25 + "–" + p75;
+  })();
   NEWS.forEach(function (r) { r.kind = "news"; r.court_links = []; });
   var byId = {};
   NEWS.forEach(function (r) { byId[r.id] = r; });
@@ -327,6 +349,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     subs.push({ n: fmt(states.size), l: "state" + (states.size === 1 ? "" : "s") });
     if (years.length) subs.push({ n: years[0] === years[years.length - 1] ? years[0] : years[0] + "\u2013" + years[years.length - 1], l: "coverage" });
     top.forEach(function (k) { subs.push({ n: fmt(byCrime[k]), l: k }); });
+    if (ADDS_RANGE !== null) subs.push({ n: ADDS_RANGE, l: "stories added per day on average" });
     document.getElementById("b-substats").innerHTML = subs.map(function (x) {
       return '<div class="substat"><div class="n">' + esc(x.n) + '</div><div class="l">' + esc(x.l) + "</div></div>";
     }).join("");
@@ -590,6 +613,8 @@ def _load_usmap() -> str:
 
 
 def build_site() -> None:
+    from daily_adds import load_daily_adds
+
     stories = load_stories()
     courts = []
     if COURT_CSV.exists():
@@ -599,6 +624,7 @@ def build_site() -> None:
 
     payload = json.dumps(stories, ensure_ascii=False).replace("</", "<\\/")
     court_payload = json.dumps(courts, ensure_ascii=False).replace("</", "<\\/")
+    adds_payload = json.dumps(load_daily_adds(), ensure_ascii=False).replace("</", "<\\/")
 
     # Render the social card and resolve its filename FIRST: writing index.html
     # before substituting __OG_IMAGE__ means any failure in between leaves a
@@ -610,6 +636,7 @@ def build_site() -> None:
     html = (TEMPLATE
             .replace("__DATA_JSON__", payload)
             .replace("__COURT_JSON__", court_payload)
+            .replace("__ADDS_JSON__", adds_payload)
             .replace("__USMAP__", _load_usmap())
             .replace("__UPDATED__", date.today().strftime("%B %-d, %Y"))
             .replace("__OG_IMAGE__", og_name))

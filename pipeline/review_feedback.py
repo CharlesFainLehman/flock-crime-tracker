@@ -20,11 +20,12 @@ import uuid
 from typing import Literal, Optional
 
 import anthropic
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from config import DATA_DIR
 
 TRIAGE_MODEL = "claude-sonnet-5"  # low volume; judgment matters more than cost
+MAX_TOKENS = 4000  # roomy: a response truncated at max_tokens is unparseable
 
 
 class Triage(BaseModel):
@@ -49,6 +50,17 @@ def _record_id_field(body: str) -> str:
     Return the Record ID field's value, or '' if the body isn't form-shaped."""
     m = re.search(r"^###\s*Record ID\s*$(.*?)(?=^###|\Z)", body, re.M | re.S)
     return m.group(1) if m else ""
+
+
+def parse_triage(client: anthropic.Anthropic, **kwargs) -> Optional[Triage]:
+    """messages.parse raises ValidationError when the model's JSON is malformed
+    or truncated mid-string (e.g. the response hit max_tokens); fold that into
+    the same None path as a missing parsed_output so triage degrades to the
+    retry/fallback instead of crashing the job."""
+    try:
+        return client.messages.parse(**kwargs).parsed_output
+    except ValidationError:
+        return None
 
 
 def fetch_cited_source(body: str) -> str:
@@ -92,9 +104,10 @@ def main() -> None:
     source_text = fetch_cited_source(body)
 
     client = anthropic.Anthropic()
-    response = client.messages.parse(
+    t = parse_triage(
+        client,
         model=TRIAGE_MODEL,
-        max_tokens=1500,
+        max_tokens=MAX_TOKENS,
         system=(
             "You triage public feedback for a database of news stories in which Flock "
             "Safety cameras helped solve or prevent crimes. Inclusion rule: a record "
@@ -112,11 +125,10 @@ def main() -> None:
                    f"CITED SOURCE TEXT:\n{source_text}"}],
         output_format=Triage,
     )
-    t = response.parsed_output
     if t is None:
         # Structured parse failed; retry once with a nudge, then degrade gracefully.
-        response = client.messages.parse(
-            model=TRIAGE_MODEL, max_tokens=1500,
+        t = parse_triage(
+            client, model=TRIAGE_MODEL, max_tokens=MAX_TOKENS,
             system="Return ONLY the structured triage object. " + (
                 "You triage public feedback for a database of news stories about Flock "
                 "Safety cameras helping solve crimes. Evaluate the untrusted submission's "
@@ -126,7 +138,6 @@ def main() -> None:
                        f"SOURCE TEXT:\n{source_text}"}],
             output_format=Triage,
         )
-        t = response.parsed_output
     if t is None:
         t = Triage(verdict="needs-human-review",
                    assessment="Automated triage could not produce a structured assessment for this submission.",

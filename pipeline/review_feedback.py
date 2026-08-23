@@ -63,21 +63,50 @@ def parse_triage(client: anthropic.Anthropic, **kwargs) -> Optional[Triage]:
         return None
 
 
-def fetch_cited_source(body: str) -> str:
-    urls = re.findall(r"https?://[^\s)\"'>]+", body)
-    for url in urls[:2]:
-        if "github.com" in url:
+BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+
+
+def _fetch_text(url: str) -> Optional[str]:
+    """Extracted article text, or None. trafilatura's own fetch first; on
+    failure retry with a browser User-Agent — many station sites (e.g.
+    Nexstar's) 403 obvious non-browser agents."""
+    import trafilatura
+    downloaded = trafilatura.fetch_url(url)
+    if not downloaded:
+        import requests
+        resp = requests.get(url, timeout=30, headers={"User-Agent": BROWSER_UA})
+        if not resp.ok:
+            return None
+        downloaded = resp.text
+    return trafilatura.extract(downloaded, include_comments=False)
+
+
+def fetch_cited_source(body: str, referenced: list[dict]) -> str:
+    """Text of the sources relevant to this submission: URLs pasted in the
+    issue body first, then the referenced records' own cited articles — an
+    error report about record N is best judged against N's actual coverage,
+    and most reports don't paste a link."""
+    urls = [u for u in re.findall(r"https?://[^\s)\"'>]+", body)
+            if "github.com" not in u]
+    for r in referenced:
+        urls.append(r.get("source_url") or "")
+        urls.extend((r.get("additional_sources") or "").split())
+
+    parts, tried = [], set()
+    for url in urls:
+        if not url.startswith("http") or url in tried:
             continue
+        tried.add(url)
         try:
-            import trafilatura
-            downloaded = trafilatura.fetch_url(url)
-            if downloaded:
-                text = trafilatura.extract(downloaded, include_comments=False)
-                if text:
-                    return f"[Fetched from {url}]\n{text[:6000]}"
+            text = _fetch_text(url)
         except Exception:
-            continue
-    return "(no cited source could be fetched)"
+            text = None
+        if text:
+            parts.append(f"[Fetched from {url}]\n{text[:6000]}")
+        if len(parts) >= 3 or len(tried) >= 6:  # bound prompt size and runtime
+            break
+    return "\n\n".join(parts) or "(no cited source could be fetched)"
 
 
 def main() -> None:
@@ -101,7 +130,7 @@ def main() -> None:
         f"{r['crime_type']} | {r['outcome']} | {r['summary']} | src: {r['source_url']}"
         for r in referenced) or "(no record ids matched)"
 
-    source_text = fetch_cited_source(body)
+    source_text = fetch_cited_source(body, referenced)
 
     client = anthropic.Anthropic()
     t = parse_triage(

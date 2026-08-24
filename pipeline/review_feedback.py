@@ -45,10 +45,11 @@ def load_rows(path, id_filter=None):
     return rows
 
 
-def _record_id_field(body: str) -> str:
+def _form_field(body: str, label: str) -> str:
     """The issue form renders each field as '### Label' followed by its value.
-    Return the Record ID field's value, or '' if the body isn't form-shaped."""
-    m = re.search(r"^###\s*Record ID\s*$(.*?)(?=^###|\Z)", body, re.M | re.S)
+    Return that field's value, or '' if the body isn't form-shaped."""
+    m = re.search(rf"^###\s*{re.escape(label)}[^\n]*$(.*?)(?=^###|\Z)",
+                  body, re.M | re.S)
     return m.group(1) if m else ""
 
 
@@ -118,10 +119,15 @@ def main() -> None:
     # Pull candidate record ids mentioned in the submission. Matching every bare
     # number would drag in dates and times ("8/15/2026" -> records 8, 15, 2026),
     # so read the issue form's Record ID field first and otherwise require an
-    # explicit "record/row/id/#" prefix.
-    ids = set(re.findall(r"\d{1,6}", _record_id_field(body))) | set(
+    # explicit "record/row/id/#" prefix. Exception: in a duplicate report the
+    # explanation's numbers are almost certainly record ids ("merge with 2151"),
+    # so take bare ones there too — minus date/time fragments.
+    ids = set(re.findall(r"\d{1,6}", _form_field(body, "Record ID"))) | set(
         re.findall(r"(?:record|row|id)\s*#?\s*(\d{1,6})\b", body, re.I)) | set(
         re.findall(r"#(\d{1,6})\b", body))
+    if "Duplicate of another record" in _form_field(body, "What"):
+        ids |= set(re.findall(r"(?<![\d/.:-])(\d{1,6})(?![\d/.:-])",
+                              _form_field(body, "Explain the problem")))
     ids &= {r["id"] for r in load_rows(DATA_DIR / "stories.csv")}
     ids = set(sorted(ids, key=int)[:10])  # bound the prompt
     referenced = load_rows(DATA_DIR / "stories.csv", ids) if ids else []

@@ -598,6 +598,8 @@ TEMPLATE = r"""<!DOCTYPE html>
 
 })();
 </script>
+<script data-goatcounter="https://flockstopscrime.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>
 """

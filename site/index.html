@@ -136,7 +136,7 @@
   <header>
     <h1>Flock Crime Prevention Tracker</h1>
     <p class="subtitle">A daily-updated database of news stories in which Flock Safety cameras helped solve or prevent a crime.</p>
-    <p class="updated">Last updated August 25, 2026 &middot; Download: <a class="dl" href="stories.csv" download>news stories (CSV)</a> &middot; <a class="dl" href="court_records.csv" download>court records (CSV)</a></p>
+    <p class="updated">Last updated August 26, 2026 &middot; Download: <a class="dl" href="stories.csv" download>news stories (CSV)</a> &middot; <a class="dl" href="court_records.csv" download>court records (CSV)</a></p>
     <nav class="toc">
       <a href="#database">Database</a>
       <a href="#method">Methodology</a>
@@ -153,7 +153,7 @@
     </div>
     <div class="banner-foot">
       <span class="brand">flockstopscrime.com</span>
-      <span class="bdate" id="b-foot">updated August 25, 2026</span>
+      <span class="bdate" id="b-foot">updated August 26, 2026</span>
     </div>
   </div>
 
@@ -623,7 +623,7 @@
     if (fCrime.value) filt.push(fCrime.value);
     if (fYear.value) filt.push(fYear.value);
     if (q.value.trim()) filt.push('"' + q.value.trim() + '"');
-    var base = "updated August 25, 2026";
+    var base = "updated August 26, 2026";
     document.getElementById("b-foot").textContent =
       filt.length ? base + " \u00b7 filtered: " + filt.join(" \u00b7 ") : base;
   }

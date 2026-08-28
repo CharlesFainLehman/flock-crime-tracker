@@ -349,7 +349,7 @@ TEMPLATE = r"""<!DOCTYPE html>
     subs.push({ n: fmt(states.size), l: "state" + (states.size === 1 ? "" : "s") });
     if (years.length) subs.push({ n: years[0] === years[years.length - 1] ? years[0] : years[0] + "\u2013" + years[years.length - 1], l: "coverage" });
     top.forEach(function (k) { subs.push({ n: fmt(byCrime[k]), l: k }); });
-    if (ADDS_RANGE !== null) subs.push({ n: ADDS_RANGE, l: "stories added per day on average" });
+    if (ADDS_RANGE !== null) subs.push({ n: ADDS_RANGE, l: "stories added per day on average (IQR)" });
     document.getElementById("b-substats").innerHTML = subs.map(function (x) {
       return '<div class="substat"><div class="n">' + esc(x.n) + '</div><div class="l">' + esc(x.l) + "</div></div>";
     }).join("");

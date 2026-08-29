@@ -1,5 +1,7 @@
 """Shared candidate-processing loop used by the daily run and the backfill."""
 
+import re
+
 import anthropic
 
 from classify import classify_article
@@ -35,6 +37,19 @@ def canonical_url(url: str) -> str:
     return base
 
 
+_DATED_PATH_RE = re.compile(r"/\d{4}/\d{2}/\d{2}/[^/?]+$")
+
+
+def syndication_path(url: str) -> str | None:
+    """The /YYYY/MM/DD/slug tail of a canonical URL, if it has one. Chains
+    (e.g. Sound Publishing's Puget Sound weeklies) republish one article at
+    the same dated path on many sibling hostnames; a date plus slug is
+    specific enough to identify the article across hosts, where full-URL
+    canonicalization cannot."""
+    m = _DATED_PATH_RE.search(canonical_url(url).partition("?")[0])
+    return m.group(0) if m else None
+
+
 def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
                        stories: list[dict], seen_urls: set[str]) -> dict:
     """Classify candidates and append qualifying, non-duplicate rows to stories.
@@ -45,6 +60,10 @@ def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
     # Canonical forms of everything already stored, to catch same-article URL variants.
     stored = {canonical_url(s_["source_url"]) for s_ in stories}
     stored |= {canonical_url(u) for s_ in stories for u in s_.get("additional_sources", "").split() if u}
+    # Dated-path forms, to catch the same article syndicated across hostnames.
+    stored_paths = {p for s_ in stories
+                    for u in [s_["source_url"], *s_.get("additional_sources", "").split()]
+                    for p in [syndication_path(u)] if p}
 
     for i, candidate in enumerate(candidates, 1):
         if candidate["url"] in seen_urls:
@@ -62,6 +81,11 @@ def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
             counts["rejected"] += 1
             continue
         if canonical_url(url) in stored:   # same article, different URL form
+            seen_urls.add(url)
+            counts["duplicates"] += 1
+            continue
+        path = syndication_path(url)
+        if path and path in stored_paths:  # same article, syndicated on a sibling host
             seen_urls.add(url)
             counts["duplicates"] += 1
             continue
@@ -103,12 +127,16 @@ def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
                     if url not in urls and url != s.get("source_url"):
                         urls.append(url)
                         s["additional_sources"] = " ".join(urls)
+            if path:
+                stored_paths.add(path)
             print(f"  duplicate of id {dup_id}")
             counts["duplicates"] += 1
             continue
 
         stories.append(row)
         stored.add(canonical_url(url))
+        if path:
+            stored_paths.add(path)
         print(f"  ADDED: {row['city']}, {row['state']} | {row['crime_type']} | {row['outcome']}")
         counts["new"] += 1
 

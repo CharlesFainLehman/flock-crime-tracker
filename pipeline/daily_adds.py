@@ -33,7 +33,13 @@ STORIES_REL = "data/stories.csv"  # repo-relative, for git commands
 # its 13 adds (ids 918, 919, 924, 927 in commit 781eea4) duplicated stories
 # the import captured independently; dedupe would have caught them any other
 # day. Verified by tracing every daily-added row's source_url into main.
-REBUILD_CORRECTIONS = {"2026-08-19": -4}
+REBUILD_CORRECTIONS = {
+    "2026-08-19": -4,
+    # Nine syndicated copies of one undated Covington, WA story (rows
+    # 2189-2197) each missed their just-added twin in the dedupe shortlist;
+    # 10 recorded adds were really 2 stories.
+    "2026-08-29": -8,
+}
 
 
 def load_daily_adds() -> list[dict]:

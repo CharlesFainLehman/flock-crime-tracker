@@ -43,12 +43,19 @@ def find_candidates(new_row: dict, stories: list[dict]) -> list[dict]:
         out.append(s)
     # Rank by date proximity before truncating: CSV order is neither
     # chronological nor relevance-ranked, so a plain slice can drop the very
-    # row the new story duplicates.
-    def _distance(s: dict) -> tuple[int, int]:
+    # row the new story duplicates. Ties (and every pair where either side
+    # lacks an incident date) break toward the most recently ADDED row: when
+    # the new story has no incident date the proximity ranking is inert, and
+    # a plain slice kept the 20 oldest same-state rows — nine syndicated
+    # copies of one undated story each missed their just-added twin at the
+    # end of the list and sailed through as "new" (rows 2189-2197).
+    def _distance(s: dict) -> tuple[int, int, int]:
+        added = _parse_date(s.get("date_added", ""))
+        recency = -(added.toordinal() if added else 0)
         old_date = _parse_date(s.get("incident_date", ""))
         if not new_date or not old_date:
-            return (1, 0)  # undated rows sort after every dated one
-        return (0, abs((new_date - old_date).days))
+            return (1, 0, recency)
+        return (0, abs((new_date - old_date).days), recency)
     out.sort(key=_distance)
     return out[:20]
 

@@ -39,6 +39,12 @@ REBUILD_CORRECTIONS = {
     # 2189-2197) each missed their just-added twin in the dedupe shortlist;
     # 10 recorded adds were really 2 stories.
     "2026-08-29": -8,
+    # Two 2026-09-02 adds repeated existing stories: 2207 duplicated 2163
+    # (Marshall, TX Whataburger homicide; the older row's month-only date put
+    # it outside the 21-day candidate window) and 2208 duplicated 2202 (Rusk
+    # County, TX assault; the older row had no city or name, so the model
+    # judged them different). Merged into 2163 and 2202.
+    "2026-09-02": -2,
 }
 
 

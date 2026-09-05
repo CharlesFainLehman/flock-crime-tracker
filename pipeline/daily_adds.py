@@ -45,6 +45,10 @@ REBUILD_CORRECTIONS = {
     # County, TX assault; the older row had no city or name, so the model
     # judged them different). Merged into 2163 and 2202.
     "2026-09-02": -2,
+    # 2225 duplicated 2209 (Moody, AL kidnapping): the follow-up article's
+    # new details (brother, Tuscaloosa origin) read as a different incident
+    # to the dedupe model. Merged into 2209 (issue #19).
+    "2026-09-05": -1,
 }
 
 

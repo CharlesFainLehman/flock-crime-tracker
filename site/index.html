@@ -106,7 +106,7 @@
   .filters input { flex: 1 1 220px; min-width: 180px; }
   .count { font-size: 0.85rem; color: var(--muted); margin-left: auto; }
   .table-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--hairline); border-radius: 10px; }
-  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; min-width: 860px; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; min-width: 960px; }
   th, td { text-align: left; padding: 10px 12px; vertical-align: top; border-top: 1px solid var(--grid); }
   thead th { border-top: none; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); position: sticky; top: 0; background: var(--card); }
   thead th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
@@ -460,6 +460,7 @@
       <thead><tr>
         <th>Type</th>
         <th class="sortable" data-sort="date">Date <span class="arrow"></span></th>
+        <th class="sortable" data-sort="added">Added <span class="arrow"></span></th>
         <th class="sortable" data-sort="loc">Location <span class="arrow"></span></th>
         <th class="sortable" data-sort="crime">Crime <span class="arrow"></span></th>
         <th>Camera role</th>
@@ -776,6 +777,7 @@
       return "<tr>" +
         '<td><span class="type-' + r.kind + '">' + (r.kind === "news" ? "news" : "court") + "</span></td>" +
         '<td class="date">' + esc(r.incident_date || r.date_added) + "</td>" +
+        '<td class="date">' + esc(r.date_added || "") + "</td>" +
         '<td class="loc">' + esc(r.city ? r.city + ", " + r.state : r.state) + "</td>" +
         '<td><span class="pill">' + esc(r.crime_type) + "</span></td>" +
         "<td>" + esc(r.camera_role) + "</td>" +
@@ -785,7 +787,7 @@
         "</tr>";
     }).join("");
     document.getElementById("rows").innerHTML =
-      body || '<tr><td colspan="8" style="color:#64748b">No matching stories.</td></tr>';
+      body || '<tr><td colspan="9" style="color:#64748b">No matching stories.</td></tr>';
     document.getElementById("count").textContent =
       fmt(rows.length) + " of " + fmt(ALL.length) + " records";
     document.getElementById("more").hidden = rows.length <= shown;
@@ -793,6 +795,7 @@
 
   function sortVal(r) {
     if (sortKey === "date") return r.incident_date || r.date_added || "";
+    if (sortKey === "added") return r.date_added || "";
     if (sortKey === "loc") return (r.state || "") + " " + (r.city || "");
     return r.crime_type || "";
   }
@@ -821,7 +824,7 @@
   document.querySelectorAll("th.sortable").forEach(function (th) {
     th.addEventListener("click", function () {
       var k = th.getAttribute("data-sort");
-      if (sortKey === k) { sortDir = -sortDir; } else { sortKey = k; sortDir = k === "date" ? -1 : 1; }
+      if (sortKey === k) { sortDir = -sortDir; } else { sortKey = k; sortDir = (k === "date" || k === "added") ? -1 : 1; }
       render();
     });
   });

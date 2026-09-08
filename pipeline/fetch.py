@@ -32,12 +32,31 @@ GDELT_STATS = {"calls": 0, "retries": 0, "gave_up": 0}
 
 # Domains that produce noise, not news coverage.
 SKIP_DOMAINS = ("flocksafety.com", "prnewswire.com", "businesswire.com",
-                "globenewswire.com", "streetinsider.com")
+                "globenewswire.com", "streetinsider.com",
+                # Yahoo Finance (and regional mirrors like sg.finance.yahoo.com)
+                # republishes GlobeNewswire/PRNewswire releases wholesale; every
+                # Flock hit there has been a press release. news.yahoo.com and
+                # www.yahoo.com/news carry real reporting and are not matched.
+                "finance.yahoo.com")
 
 # Path fragments marking press releases republished through wire/syndication
 # sections of otherwise ordinary outlets.
 SKIP_URL_FRAGMENTS = ("newswire", "press_release", "online_features",
                       "/region/flock-", "news/national/flock-")
+
+
+# Body-text markers of a press release: wire datelines and the vendor's
+# "About Flock" boilerplate. A content-level backstop for syndicators the
+# domain list doesn't know yet (record 2233 arrived via Yahoo Finance).
+PRESS_RELEASE_MARKERS = ("globe newswire", "globenewswire", "prnewswire",
+                         "pr newswire", "business wire", "accesswire",
+                         "about flock safety")
+
+
+def is_press_release_text(text: str | None) -> bool:
+    """True when fetched article text reads as a wire/vendor press release."""
+    low = (text or "").lower()
+    return any(m in low for m in PRESS_RELEASE_MARKERS)
 
 
 def is_vendor_or_wire(url: str, domain: str = "") -> bool:

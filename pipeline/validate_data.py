@@ -46,7 +46,7 @@ def main() -> None:
         if p.name == "stories.csv":
             import re
             vendor = re.compile(r"globenewswire|flocksafety\.com|prnewswire|businesswire|"
-                               r"press_release|online_features|tmt-newswire", re.I)
+                               r"press_release|online_features|tmt-newswire|finance\.yahoo\.com", re.I)
             bad = [r["id"] for r in rows if vendor.search(r.get("source_url", ""))]
             if bad:
                 fail(f"{p.name}: vendor/press-release primary source on ids {bad[:8]} — re-source or remove")

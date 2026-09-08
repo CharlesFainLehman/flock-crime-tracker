@@ -6,7 +6,8 @@ import anthropic
 
 from classify import classify_article
 from dedupe import check_duplicate
-from fetch import fetch_article_text, is_vendor_or_wire, resolve_candidate
+from fetch import (fetch_article_text, is_press_release_text, is_vendor_or_wire,
+                   resolve_candidate)
 from store import make_row, next_story_id
 
 _VARIANT_SEGMENTS = ("/gallery/", "/newsletter/gallery/", "/newsletter/", "/amp/", "/photos/")
@@ -97,6 +98,15 @@ def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
         print(f"[{i}/{len(candidates)}] {candidate['title'][:90]}")
         try:
             text = fetch_article_text(url)
+            if is_press_release_text(text):
+                # Vendor/wire release republished by a host the domain list
+                # doesn't cover. Not independent sourcing; never classify it.
+                seen_urls.add(url)
+                if candidate.get("google_url"):
+                    seen_urls.add(candidate["google_url"])
+                print("  rejected: press-release text")
+                counts["rejected"] += 1
+                continue
             cls = classify_article(client, candidate, text)
         except Exception as e:
             # Never mark seen on errors: the article must be retried next run.

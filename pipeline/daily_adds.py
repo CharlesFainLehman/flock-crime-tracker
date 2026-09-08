@@ -34,7 +34,8 @@ STORIES_REL = "data/stories.csv"  # repo-relative, for git commands
 # the import captured independently; dedupe would have caught them any other
 # day. Verified by tracing every daily-added row's source_url into main.
 REBUILD_CORRECTIONS = {
-    "2026-08-19": -4,
+    "2026-08-19": -5,  # -4 import-race duplicates; -1 for 926, a Flock press
+                       # release via Yahoo Finance the vendor filter missed
     # Nine syndicated copies of one undated Covington, WA story (rows
     # 2189-2197) each missed their just-added twin in the dedupe shortlist;
     # 10 recorded adds were really 2 stories.
@@ -49,6 +50,9 @@ REBUILD_CORRECTIONS = {
     # new details (brother, Tuscaloosa origin) read as a different incident
     # to the dedupe model. Merged into 2209 (issue #19).
     "2026-09-05": -1,
+    # 2233 was a Flock press release syndicated by sg.finance.yahoo.com,
+    # which the vendor filter did not cover (issue #23).
+    "2026-09-08": -1,
 }
 
 

@@ -6,12 +6,18 @@ data/court_records.csv. Runs weekly (filings move slower than news); a full
 sweep with no date floor runs when --full is passed.
 
 Requires COURTLISTENER_TOKEN and ANTHROPIC_API_KEY.
+
+--reclassify-opinions re-runs opinion candidates that are already in the seen
+set (use after a text-fetch or classifier fix); rows already recorded are not
+duplicated.
 """
 
 import argparse
 import csv
+import html
 import json
 import os
+import re
 import sys
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -33,7 +39,13 @@ SEEN_JSON = DATA_DIR / "seen_court_ids.json"
 CANDIDATES_JSON = DATA_DIR / "court_candidates.json"
 
 COURT_QUERIES = ['"flock safety"', '"flock camera"', '"flock cameras"',
-                 '"flock lpr"', '"flock alpr"', '"flock license plate"']
+                 '"flock lpr"', '"flock alpr"', '"flock license plate"',
+                 # Opinions and filings often say just "Flock" ("the Flock system",
+                 # "Flock hits"). Measured 2026-09-16 against the six phrases above:
+                 # +29 opinions, +270 RECAP dockets. The bird/congregation sense
+                 # rarely co-occurs with plate-reader terms; the classifier rejects
+                 # what does.
+                 'flock AND ("license plate" OR "plate reader" OR alpr OR lpr)']
 
 COURT_COLUMNS = [
     "id", "date_added", "record_type", "case_name", "court", "state",
@@ -88,8 +100,11 @@ def _get(url: str, params: dict | None = None) -> dict:
 def search(result_type: str, query: str, filed_after: str | None,
            max_pages: int = 30) -> list[dict]:
     """Paginate the v4 search API. result_type: 'r' (RECAP) or 'o' (opinions)."""
+    # highlight=on makes the snippet the passage that matched instead of the
+    # first 500 characters of the document (a caption, for opinions), so the
+    # snippet-only fallback in classify_document actually shows the Flock mention.
     params: dict | None = {"q": query, "type": result_type,
-                           "order_by": "dateFiled desc"}
+                           "order_by": "dateFiled desc", "highlight": "on"}
     if filed_after and params:
         params["filed_after"] = filed_after
     url = SEARCH_API
@@ -121,17 +136,52 @@ def _get_light(url: str, params: dict) -> dict:
     return {}
 
 
+def _strip_tags(markup: str) -> str:
+    """Plain text from HTML/XML (opinion bodies, highlighted snippets)."""
+    text = re.sub(r"<(script|style)\b[^>]*>.*?</\1>", " ", markup, flags=re.S | re.I)
+    text = re.sub(r"</(p|div|li|h\d|tr|blockquote)>|<br\s*/?>", "\n", text, flags=re.I)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = html.unescape(text)
+    return re.sub(r"[ \t\xa0]+", " ", text).strip()
+
+
+def _excerpt(text: str, max_chars: int = 12000) -> str:
+    """Up to max_chars of a document. A long opinion may not mention Flock in
+    its first 12,000 characters, so keep the caption and centre the rest on
+    the first mention instead of truncating blindly."""
+    if len(text) <= max_chars:
+        return text
+    head = 2000
+    window = max_chars - head
+    m = re.search(r"flock", text, re.I)
+    start = m.start() - window // 3 if m else 0
+    if start <= head:
+        return text[:max_chars]
+    return text[:head] + "\n[...]\n" + text[start:start + window]
+
+
 def fetch_recap_text(doc_id: int, max_chars: int = 12000) -> str:
     data = _get_light(f"{BASE}/api/rest/v4/recap-documents/{doc_id}/",
                       {"fields": "plain_text"})
-    return (data.get("plain_text") or "")[:max_chars]
+    return _excerpt(data.get("plain_text") or "", max_chars)
+
+
+# Scraped PDFs fill plain_text; HTML-sourced and Harvard-imported opinions leave
+# it empty and carry their text in one of the markup fields.
+OPINION_TEXT_FIELDS = ("plain_text", "html_with_citations", "html", "xml_harvard",
+                       "html_lawbox", "html_columbia")
 
 
 def fetch_opinion_text(cluster_id: int, max_chars: int = 12000) -> str:
     data = _get_light(f"{BASE}/api/rest/v4/opinions/",
-                      {"cluster__id": cluster_id, "fields": "plain_text"})
-    results = data.get("results", [])
-    return (results[0].get("plain_text") or "")[:max_chars] if results else ""
+                      {"cluster__id": cluster_id, "fields": ",".join(OPINION_TEXT_FIELDS)})
+    for opinion in data.get("results", []):
+        for field in OPINION_TEXT_FIELDS:
+            text = opinion.get(field) or ""
+            if text.strip():
+                return _excerpt(text if field == "plain_text" else _strip_tags(text),
+                                max_chars)
+    return ""
 
 
 def collect_candidates(filed_after: str | None) -> tuple[list[dict], int]:
@@ -156,7 +206,7 @@ def collect_candidates(filed_after: str | None) -> tuple[list[dict], int]:
                     "court": r.get("court", ""),
                     "date_filed": doc.get("entry_date_filed") or r.get("dateFiled") or "",
                     "description": doc.get("description", ""),
-                    "snippet": doc.get("snippet", ""),
+                    "snippet": _strip_tags(doc.get("snippet") or ""),
                     "url": url,
                 })
         time.sleep(2)
@@ -174,8 +224,8 @@ def collect_candidates(filed_after: str | None) -> tuple[list[dict], int]:
                 "court": r.get("court", ""),
                 "date_filed": r.get("dateFiled") or "",
                 "description": "court opinion",
-                "snippet": (r.get("opinions") or [{}])[0].get("snippet", "")
-                           if r.get("opinions") else r.get("snippet", ""),
+                "snippet": _strip_tags(((r.get("opinions") or [{}])[0].get("snippet")
+                                        if r.get("opinions") else r.get("snippet")) or ""),
                 "url": BASE + (r.get("absolute_url") or ""),
             })
         time.sleep(2)
@@ -266,6 +316,17 @@ def match_news_story(client: anthropic.Anthropic, row: dict, stories: list[dict]
     return ""
 
 
+def select_candidates(collected: list[dict], seen: set[str], records: list[dict],
+                      reclassify_opinions: bool = False) -> list[dict]:
+    """Candidates still to classify: unseen keys, plus every opinion when
+    re-classifying. Documents already in the records table are never re-run,
+    so a re-classification cannot duplicate a row."""
+    recorded_urls = {r["source_url"] for r in records}
+    return [c for c in collected
+            if (c["key"] not in seen or (reclassify_opinions and c["kind"] == "opinion"))
+            and c["url"] not in recorded_urls]
+
+
 def load_court_records() -> list[dict]:
     if not COURT_CSV.exists():
         return []
@@ -290,7 +351,11 @@ def main() -> None:
     parser.add_argument("--collect-only", action="store_true",
                         help="search CourtListener and write candidates JSON; no classification")
     parser.add_argument("--from-file", action="store_true",
-                        help="classify candidates from JSON file; no CourtListener search")
+                        help="classify candidates from JSON file; no CourtListener search "
+                             "(document text is still fetched when COURTLISTENER_TOKEN is set)")
+    parser.add_argument("--reclassify-opinions", action="store_true",
+                        help="re-run opinion candidates already in the seen set; "
+                             "documents already recorded are skipped")
     args = parser.parse_args()
 
     if args.collect_only:
@@ -320,8 +385,8 @@ def main() -> None:
             sys.exit("COURTLISTENER_TOKEN is not set; refusing to run.")
         filed_after = None if args.full else (date.today() - timedelta(days=60)).isoformat()
         collected, failed_searches = collect_candidates(filed_after)
-    candidates = [c for c in collected if c["key"] not in seen]
-    print(f"{len(candidates)} new court-document candidates "
+    candidates = select_candidates(collected, seen, records, args.reclassify_opinions)
+    print(f"{len(candidates)} court-document candidates to classify "
           f"({failed_searches} searches failed)")
     if failed_searches and not collected:
         sys.exit("Every search failed (rate limit?); failing loudly instead of "
@@ -332,8 +397,8 @@ def main() -> None:
     for i, cand in enumerate(candidates, 1):
         print(f"[{i}/{len(candidates)}] {cand['case_name'][:70]} | {cand['description'][:50]}")
         try:
-            if args.from_file:
-                text = ""  # no CourtListener calls in file mode; snippet only
+            if args.from_file and not os.environ.get("COURTLISTENER_TOKEN"):
+                text = ""  # no token for document-text calls; snippet only
             else:
                 text = (fetch_recap_text(cand["doc_id"]) if cand["kind"] == "recap"
                         else fetch_opinion_text(cand["doc_id"]))

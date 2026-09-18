@@ -110,6 +110,18 @@ listings (library guides, review sites) that may be stale.
    Tennessee), each documenting Flock use in a state prosecution. This is the largest gain per
    dollar on the list.
 
+**Status (2026-09-18): implemented, run in progress.** `pipeline/courts.py` now has the seventh
+query, `highlight=on` (the search snippet is the matching passage, not the document's first 500
+characters), opinion text taken from whichever field CourtListener populated (`plain_text`, then
+the HTML/XML fields), excerpts centred on the first Flock mention when a document exceeds 12,000
+characters, text fetch in `--from-file` mode whenever the token is set, and `--reclassify-opinions`
+(re-runs the 37 opinion candidates; rows already in the table are skipped by URL, so nothing is
+duplicated). The `Court records update` workflow gained a `reclassify_opinions` input, runs on the
+branch it is dispatched from, and deploys Pages only from `main`. The cause of the 36-of-37
+rejections was simpler than the text-field hypothesis: the August opinion candidates were
+classified in `--from-file` mode, which sent the classifier only the search snippet, and without
+highlighting that snippet was the opinion's caption.
+
 ### B. Zero-cost yield tests — about two hours, before any subscription
 
 1. Docket Alarm free account (5 actions per week): search `"Flock Safety"` and `"Flock camera"`
@@ -123,6 +135,34 @@ listings (library guides, review sites) that may be stale.
 
 Decision rule: build C only if a test shows roughly 25 or more state criminal records, or a steady
 weekly flow of new ones.
+
+**Status (2026-09-18): needs the maintainer, about 15 minutes.** Neither test can run from the
+pipeline. Docket Alarm requires an account (email verification, acceptance of its terms) and
+blocks non-browser access to its search pages. judyrecords permits programmatic access only
+through its API. Search-engine `site:` queries against docketalarm.com, judyrecords.com,
+unicourt.com, and trellis.law for "Flock Safety" returned no indexed pages, which says nothing
+either way.
+
+Steps:
+
+1. docketalarm.com, free account. Search `"Flock Safety"`, then `"Flock camera"`, filtered to
+   state courts. Record: total hits, which courts, criminal versus civil, and whether hits are
+   documents or docket entries. The free plan allows 5 actions a week, so two searches and three
+   document views per week.
+2. judyrecords.com. Search the same two phrases. Record whether the matched text is a docket
+   entry (for example "Motion to Suppress Flock …") or only a case title, and the state mix.
+3. Send this to api@judyrecords.com:
+
+> Subject: Full-Text API terms for a public research database
+>
+> I maintain flockstopscrime.com, a public, daily-updated database of criminal cases in which
+> Flock Safety license-plate cameras were used. I want to use the judyrecords Full-Text API to
+> find state trial-court cases whose docket entries mention "Flock". Expected volume: a weekly
+> search of about seven phrases, retrieving the matching case records (a few hundred a year).
+> Could you send the API terms, pricing (a research or non-commercial rate if one exists), and
+> confirm whether docket-entry text is in the full-text index?
+
+Record the counts in this section when done.
 
 ### C. Automated Docket Alarm sweep — $99/month plus document fees; one session to build
 

@@ -10,7 +10,11 @@ on:
         type: boolean
         default: false
       from_file:
-        description: "Classify from data/court_candidates.json (no CourtListener calls)"
+        description: "Classify from data/court_candidates.json (no CourtListener searches; document text is still fetched)"
+        type: boolean
+        default: false
+      reclassify_opinions:
+        description: "Re-run opinion candidates already marked seen (after a text-fetch or classifier fix)"
         type: boolean
         default: false
 
@@ -28,9 +32,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 300
     steps:
+      # Scheduled runs resolve to main. A workflow_dispatch from another branch
+      # runs and commits on that branch, so a pipeline change can be exercised
+      # before it is merged; only main deploys to Pages (see below).
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref_name }}
 
       - uses: actions/setup-python@v5
         with:
@@ -42,9 +49,9 @@ jobs:
       - name: Sweep court records
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          COURTLISTENER_TOKEN: ${{ inputs.from_file && '' || secrets.COURTLISTENER_TOKEN }}
+          COURTLISTENER_TOKEN: ${{ secrets.COURTLISTENER_TOKEN }}
           PYTHONUNBUFFERED: "1"
-        run: python pipeline/courts.py --push-progress ${{ inputs.full && '--full' || '' }} ${{ inputs.from_file && '--from-file' || '' }}
+        run: python pipeline/courts.py --push-progress ${{ inputs.full && '--full' || '' }} ${{ inputs.from_file && '--from-file' || '' }} ${{ inputs.reclassify_opinions && '--reclassify-opinions' || '' }}
 
       - name: Commit updated data and site
         id: commit
@@ -53,7 +60,7 @@ jobs:
           git config user.name "flock-tracker-bot"
           git config user.email "actions@users.noreply.github.com"
           git checkout -- site || true
-          git pull --rebase --autostash origin main
+          git pull --rebase --autostash origin ${{ github.ref_name }}
           python pipeline/validate_data.py
           python pipeline/build_site.py
           git add data site
@@ -61,15 +68,15 @@ jobs:
           git push
 
       - name: Configure Pages
-        if: always() && steps.commit.outcome == 'success'
+        if: always() && steps.commit.outcome == 'success' && github.ref_name == 'main'
         uses: actions/configure-pages@v5
 
       - name: Upload site
-        if: always() && steps.commit.outcome == 'success'
+        if: always() && steps.commit.outcome == 'success' && github.ref_name == 'main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
       - name: Deploy to GitHub Pages
-        if: always() && steps.commit.outcome == 'success'
+        if: always() && steps.commit.outcome == 'success' && github.ref_name == 'main'
         uses: actions/deploy-pages@v4

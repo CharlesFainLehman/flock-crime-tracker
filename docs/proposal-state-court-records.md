@@ -143,12 +143,24 @@ Appellate Court of Illinois, Court of Appeals of Virginia. Added rows by confide
 16 medium, 21 low. All 351 rejections sampled were correct (civil suits against Flock, public
 records disputes, an amicus brief, Flock in passing).
 
+**CourtListener quota (found 2026-09-18).** The token behind `COURTLISTENER_TOKEN` has a daily
+request quota. Run 1 (about 130 searches and 480 document fetches over four hours) exhausted it
+partway through: document-text fetches started failing after roughly 400 calls, and a second run
+that evening got `429` with `Retry-After` of about 71,600 seconds (20 hours) on its first search.
+Consequences: 83 of run 1's rejections (38 opinions, 45 federal filings) were made on a search
+snippet, not the document, and are wrong to trust; the sweep now leaves such candidates out of
+the seen set, so they are retried, and `--retry-rejected` recovers the ones already marked. A
+`--collect-only` search followed by a `--from-file` classification keeps each run inside the
+quota. This also caps any Proposal C design that leans on CourtListener document text: budget
+a few hundred API calls per day, or ask Free Law Project for a higher limit.
+
 Known defects in the added rows, for the next adversarial review:
 
 - 21 rows are snippet-only ("low") and 11 have an empty summary, because the document text
-  fetch returned nothing late in the run (rate limiting is the likely cause; the fetch now
-  retries and logs when it gives up). Four Texas Court of Appeals opinions found by the widened
-  query were rejected for the same reason. A `full` + `reclassify_low` run re-does these.
+  fetch returned nothing late in the run (the quota, above). Four Texas Court of Appeals
+  opinions found by the widened query were rejected for the same reason. Recovery runs are
+  scheduled for after the quota resets: a search-only run, unmarking the 83 snippet-only
+  rejections, then a from-file run with `reclassify_low`.
 - One investigation can produce many rows: 22 of the 99 federal rows are E.D. Wisconsin
   search-warrant applications, most from one 2023 Milwaukee robbery investigation, each
   affidavit reciting the same Flock hits. Rows are documents, not cases; state counts drawn

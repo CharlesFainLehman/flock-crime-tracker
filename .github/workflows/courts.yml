@@ -25,6 +25,10 @@ on:
         description: "Re-run every candidate not already recorded, ignoring the seen set (one-off recovery; use with full)"
         type: boolean
         default: false
+      collect_only:
+        description: "Search CourtListener and write data/court_candidates.json only; no classification"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -59,7 +63,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           COURTLISTENER_TOKEN: ${{ secrets.COURTLISTENER_TOKEN }}
           PYTHONUNBUFFERED: "1"
-        run: python pipeline/courts.py --push-progress ${{ inputs.full && '--full' || '' }} ${{ inputs.from_file && '--from-file' || '' }} ${{ inputs.reclassify_opinions && '--reclassify-opinions' || '' }} ${{ inputs.reclassify_low && '--reclassify-low' || '' }} ${{ inputs.retry_rejected && '--retry-rejected' || '' }}
+        run: python pipeline/courts.py --push-progress ${{ inputs.full && '--full' || '' }} ${{ inputs.from_file && '--from-file' || '' }} ${{ inputs.reclassify_opinions && '--reclassify-opinions' || '' }} ${{ inputs.reclassify_low && '--reclassify-low' || '' }} ${{ inputs.retry_rejected && '--retry-rejected' || '' }} ${{ inputs.collect_only && '--collect-only' || '' }}
 
       - name: Commit updated data and site
         id: commit

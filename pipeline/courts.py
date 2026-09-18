@@ -490,11 +490,13 @@ def main() -> None:
         else:
             print(f"  rejected: {cls.reason[:100]}")
             counts["rejected"] += 1
-            if existing is not None:
+            if existing is not None and text.strip():
                 records.remove(existing)
                 del by_url[cand["url"]]
                 counts["removed"] += 1
                 print("  REMOVED: previously recorded from a snippet; full text does not qualify")
+            elif existing is not None:
+                print("  kept: still no document text, so the earlier snippet-based row stands")
             elif not text.strip():
                 # Rejected on a search snippet because the text fetch returned
                 # nothing: leave it out of `seen` so the next sweep tries again.

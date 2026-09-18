@@ -11,7 +11,10 @@ Requires COURTLISTENER_TOKEN and ANTHROPIC_API_KEY.
 set (use after a text-fetch or classifier fix); rows already recorded are not
 duplicated. --reclassify-low re-runs the documents behind rows whose confidence
 is "low" (classified from a search snippet because the text fetch failed) and
-updates or removes those rows in place.
+updates or removes those rows in place. --retry-rejected re-runs every candidate
+not already recorded, ignoring the seen set (one-off recovery after a fetch
+outage). A candidate rejected without document text is never marked seen, so
+the next sweep that reaches it tries again.
 """
 
 import argparse
@@ -341,7 +344,8 @@ def record_signature(row: dict) -> tuple:
 
 def select_candidates(collected: list[dict], seen: set[str], records: list[dict],
                       reclassify_opinions: bool = False,
-                      reclassify_low: bool = False) -> list[dict]:
+                      reclassify_low: bool = False,
+                      retry_rejected: bool = False) -> list[dict]:
     """Candidates still to classify: unseen keys, plus every opinion when
     re-classifying opinions, plus the documents behind low-confidence rows when
     re-classifying those. Documents already in the records table (by URL or by
@@ -356,7 +360,8 @@ def select_candidates(collected: list[dict], seen: set[str], records: list[dict]
         if c["url"] in low_urls:
             out.append(c)  # re-run in place; main() updates or removes its row
             continue
-        if c["key"] in seen and not (reclassify_opinions and c["kind"] == "opinion"):
+        if c["key"] in seen and not retry_rejected \
+                and not (reclassify_opinions and c["kind"] == "opinion"):
             continue
         sig = doc_signature(c["kind"], c["court"], c["case_name"], c["date_filed"], c["url"])
         if c["url"] in recorded_urls or sig in taken:
@@ -398,6 +403,9 @@ def main() -> None:
     parser.add_argument("--reclassify-low", action="store_true",
                         help="re-run the documents behind low-confidence rows and update "
                              "or remove those rows in place (use with --full to reach old rows)")
+    parser.add_argument("--retry-rejected", action="store_true",
+                        help="re-run every candidate not already recorded, ignoring the seen "
+                             "set (one-off recovery after a text-fetch outage)")
     args = parser.parse_args()
 
     if args.collect_only:
@@ -428,14 +436,14 @@ def main() -> None:
         filed_after = None if args.full else (date.today() - timedelta(days=60)).isoformat()
         collected, failed_searches = collect_candidates(filed_after)
     candidates = select_candidates(collected, seen, records, args.reclassify_opinions,
-                                   args.reclassify_low)
+                                   args.reclassify_low, args.retry_rejected)
     print(f"{len(candidates)} court-document candidates to classify "
           f"({failed_searches} searches failed)")
     if failed_searches and not collected:
         sys.exit("Every search failed (rate limit?); failing loudly instead of "
                  "reporting an empty sweep as success.")
 
-    counts = {"new": 0, "updated": 0, "removed": 0, "rejected": 0, "errors": 0}
+    counts = {"new": 0, "updated": 0, "removed": 0, "rejected": 0, "retry": 0, "errors": 0}
     next_id = max((int(r["id"]) for r in records), default=0) + 1
     by_url = {r["source_url"]: r for r in records}
     for i, cand in enumerate(candidates, 1):
@@ -487,6 +495,12 @@ def main() -> None:
                 del by_url[cand["url"]]
                 counts["removed"] += 1
                 print("  REMOVED: previously recorded from a snippet; full text does not qualify")
+            elif not text.strip():
+                # Rejected on a search snippet because the text fetch returned
+                # nothing: leave it out of `seen` so the next sweep tries again.
+                print("  (no document text; not marked seen, will retry)")
+                counts["retry"] += 1
+                continue
 
         # Mark seen only once this document's row (if any) is in `records`, and
         # checkpoint both together: persisting the key first would let a crash
@@ -509,7 +523,8 @@ def main() -> None:
     from build_site import build_site
     build_site()
     print(f"\nDone. New: {counts['new']}, updated: {counts['updated']}, "
-          f"removed: {counts['removed']}, rejected: {counts['rejected']}, "
+          f"removed: {counts['removed']}, rejected: {counts['rejected']} "
+          f"(of which {counts['retry']} without text, kept for retry), "
           f"errors: {counts['errors']}. {len(records)} court records total.")
 
     processed = counts["new"] + counts["updated"] + counts["rejected"] + counts["errors"]

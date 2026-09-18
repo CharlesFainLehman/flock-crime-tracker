@@ -21,6 +21,10 @@ on:
         description: "Re-run the documents behind low-confidence rows with full text; update or remove those rows (use with full)"
         type: boolean
         default: false
+      retry_rejected:
+        description: "Re-run every candidate not already recorded, ignoring the seen set (one-off recovery; use with full)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -55,7 +59,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           COURTLISTENER_TOKEN: ${{ secrets.COURTLISTENER_TOKEN }}
           PYTHONUNBUFFERED: "1"
-        run: python pipeline/courts.py --push-progress ${{ inputs.full && '--full' || '' }} ${{ inputs.from_file && '--from-file' || '' }} ${{ inputs.reclassify_opinions && '--reclassify-opinions' || '' }} ${{ inputs.reclassify_low && '--reclassify-low' || '' }}
+        run: python pipeline/courts.py --push-progress ${{ inputs.full && '--full' || '' }} ${{ inputs.from_file && '--from-file' || '' }} ${{ inputs.reclassify_opinions && '--reclassify-opinions' || '' }} ${{ inputs.reclassify_low && '--reclassify-low' || '' }} ${{ inputs.retry_rejected && '--retry-rejected' || '' }}
 
       - name: Commit updated data and site
         id: commit

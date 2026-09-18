@@ -17,6 +17,10 @@ on:
         description: "Re-run opinion candidates already marked seen (after a text-fetch or classifier fix)"
         type: boolean
         default: false
+      reclassify_low:
+        description: "Re-run the documents behind low-confidence rows with full text; update or remove those rows (use with full)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -51,7 +55,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           COURTLISTENER_TOKEN: ${{ secrets.COURTLISTENER_TOKEN }}
           PYTHONUNBUFFERED: "1"
-        run: python pipeline/courts.py --push-progress ${{ inputs.full && '--full' || '' }} ${{ inputs.from_file && '--from-file' || '' }} ${{ inputs.reclassify_opinions && '--reclassify-opinions' || '' }}
+        run: python pipeline/courts.py --push-progress ${{ inputs.full && '--full' || '' }} ${{ inputs.from_file && '--from-file' || '' }} ${{ inputs.reclassify_opinions && '--reclassify-opinions' || '' }} ${{ inputs.reclassify_low && '--reclassify-low' || '' }}
 
       - name: Commit updated data and site
         id: commit

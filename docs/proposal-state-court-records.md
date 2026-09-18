@@ -110,17 +110,56 @@ listings (library guides, review sites) that may be stale.
    Tennessee), each documenting Flock use in a state prosecution. This is the largest gain per
    dollar on the list.
 
-**Status (2026-09-18): implemented, run in progress.** `pipeline/courts.py` now has the seventh
-query, `highlight=on` (the search snippet is the matching passage, not the document's first 500
+**Status (2026-09-18): implemented and run.** `pipeline/courts.py` now has the seventh query,
+`highlight=on` (the search snippet is the matching passage, not the document's first 500
 characters), opinion text taken from whichever field CourtListener populated (`plain_text`, then
 the HTML/XML fields), excerpts centred on the first Flock mention when a document exceeds 12,000
-characters, text fetch in `--from-file` mode whenever the token is set, and `--reclassify-opinions`
-(re-runs the 37 opinion candidates; rows already in the table are skipped by URL, so nothing is
-duplicated). The `Court records update` workflow gained a `reclassify_opinions` input, runs on the
-branch it is dispatched from, and deploys Pages only from `main`. The cause of the 36-of-37
-rejections was simpler than the text-field hypothesis: the August opinion candidates were
-classified in `--from-file` mode, which sent the classifier only the search snippet, and without
-highlighting that snippet was the opinion's caption.
+characters, text fetch in `--from-file` mode whenever the token is set, document-level dedupe
+(CourtListener carries one case under several docket ids and one opinion under several
+clusters; a filing is now identified by court, case, date, and docket entry number, so the same
+document cannot become two rows), `--reclassify-opinions`, and `--reclassify-low` (re-runs the
+documents behind snippet-only rows and updates or removes them in place). The `Court records
+update` workflow gained `reclassify_opinions` and `reclassify_low` inputs, runs on the branch it
+is dispatched from, and deploys Pages only from `main`.
+
+The cause of the 36-of-37 rejections was simpler than the text-field hypothesis: the August
+opinion candidates were classified in `--from-file` mode, which sent the classifier only the
+search snippet, and without highlighting that snippet was the opinion's caption.
+
+Full sweep with re-classification, run 2026-09-18 (GitHub Actions, about 4 hours, 482 candidates,
+0 errors, 15 rate-limit waits):
+
+| | Before | After |
+|---|---|---|
+| Rows in `court_records.csv` | 16 | 119 (after removing 28 same-document duplicates the run produced) |
+| State appellate opinions | 1 | 20 |
+| Federal filings (RECAP) | 15 | 99 |
+| Distinct cases among rows added | — | 91 |
+
+The 19 added opinions: 14 of the 37 August candidates (previously all rejected) plus 5 found by
+the widened query or newer than the August sweep. Courts: Ohio Court of Appeals 10, Texas Courts
+of Appeals 4, Supreme Court of Georgia, Supreme Court of Kansas, Indiana Court of Appeals,
+Appellate Court of Illinois, Court of Appeals of Virginia. Added rows by confidence: 66 high,
+16 medium, 21 low. All 351 rejections sampled were correct (civil suits against Flock, public
+records disputes, an amicus brief, Flock in passing).
+
+Known defects in the added rows, for the next adversarial review:
+
+- 21 rows are snippet-only ("low") and 11 have an empty summary, because the document text
+  fetch returned nothing late in the run (rate limiting is the likely cause; the fetch now
+  retries and logs when it gives up). Four Texas Court of Appeals opinions found by the widened
+  query were rejected for the same reason. A `full` + `reclassify_low` run re-does these.
+- One investigation can produce many rows: 22 of the 99 federal rows are E.D. Wisconsin
+  search-warrant applications, most from one 2023 Milwaukee robbery investigation, each
+  affidavit reciting the same Flock hits. Rows are documents, not cases; state counts drawn
+  from this table overstate Wisconsin.
+- Co-defendant dockets carry the same complaint under different case names (e.g. *United States
+  v. Davis* and *United States v. Ostrowski*, E.D. Wis., 2025-06-24); the signature dedupe does
+  not catch these.
+- *Tovar v. Rodriguez* (N.D. Tex.) is a civil rights suit alleging a detective misstated Flock
+  data in a homicide arrest affidavit. It documents Flock use in a criminal investigation, but
+  it is a contestability item under the review protocol: keep, annotate, or remove is the
+  maintainer's call.
 
 ### B. Zero-cost yield tests — about two hours, before any subscription
 

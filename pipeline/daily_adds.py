@@ -53,6 +53,18 @@ REBUILD_CORRECTIONS = {
     # 2233 was a Flock press release syndicated by sg.finance.yahoo.com,
     # which the vendor filter did not cover (issue #23).
     "2026-09-08": -1,
+    # Three interstate duplicates the same-state candidate filter never
+    # compared (issue #26): 2149 (filed under NC, the abduction's origin)
+    # repeated 2136 (Bulloch County, GA, where the girls were recovered);
+    # 2157 repeated 971 (Senoia, GA traffic stop; same state, but the
+    # follow-up carried its 08-21 publication date and the older row a wrong
+    # age, so the model judged them different); 2230 (Tarpon Springs, FL)
+    # repeated 2227 (Hot Springs, AR): the same Democrat-Gazette article on a
+    # sister domain whose /2026/sep/04/ path the syndication-path check did
+    # not match. Merged into 2136, 971 and 2227.
+    "2026-08-21": -1,
+    "2026-08-22": -1,
+    "2026-09-07": -1,
 }
 
 

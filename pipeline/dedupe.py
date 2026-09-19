@@ -7,6 +7,7 @@ to the existing row's additional_sources instead of creating a new row.
 """
 
 import calendar
+import re
 from datetime import date, datetime
 from typing import Optional
 from urllib.parse import urlparse
@@ -78,13 +79,50 @@ def _row_domains(s: dict) -> set[str]:
     return {_domain(u) for u in urls if u} - {""}
 
 
+STATE_NAMES = {
+    "AL": "Alabama", "AK": "Alaska", "AZ": "Arizona", "AR": "Arkansas",
+    "CA": "California", "CO": "Colorado", "CT": "Connecticut", "DE": "Delaware",
+    "DC": "District of Columbia", "FL": "Florida", "GA": "Georgia",
+    "HI": "Hawaii", "ID": "Idaho", "IL": "Illinois", "IN": "Indiana",
+    "IA": "Iowa", "KS": "Kansas", "KY": "Kentucky", "LA": "Louisiana",
+    "ME": "Maine", "MD": "Maryland", "MA": "Massachusetts", "MI": "Michigan",
+    "MN": "Minnesota", "MS": "Mississippi", "MO": "Missouri", "MT": "Montana",
+    "NE": "Nebraska", "NV": "Nevada", "NH": "New Hampshire", "NJ": "New Jersey",
+    "NM": "New Mexico", "NY": "New York", "NC": "North Carolina",
+    "ND": "North Dakota", "OH": "Ohio", "OK": "Oklahoma", "OR": "Oregon",
+    "PA": "Pennsylvania", "RI": "Rhode Island", "SC": "South Carolina",
+    "SD": "South Dakota", "TN": "Tennessee", "TX": "Texas", "UT": "Utah",
+    "VT": "Vermont", "VA": "Virginia", "WA": "Washington", "WV": "West Virginia",
+    "WI": "Wisconsin", "WY": "Wyoming",
+}
+
+
+def _names_state(text: str, abbr: str) -> bool:
+    """True when the text spells out the state's full name."""
+    name = STATE_NAMES.get(abbr)
+    return bool(name and re.search(rf"\b{name}\b", text, re.I))
+
+
 def find_candidates(new_row: dict, stories: list[dict]) -> list[dict]:
     new_val = new_row.get("incident_date", "")
     new_span = _date_span(new_val)
     new_dom = _domain(new_row.get("source_url", ""))
+    new_state = new_row.get("state") or ""
+    new_summary = new_row.get("summary") or ""
+    if not new_state:
+        return []
     out = []
     for s in stories:
-        if s.get("state") != new_row.get("state") or not new_row.get("state"):
+        old_state = s.get("state") or ""
+        # Same-state rows are always candidates. An interstate case (an
+        # abduction that ends in a traffic stop two states away, a fugitive
+        # tracked across a border) gets filed under either end by different
+        # outlets, and a strict same-state filter compared nothing: 2149/2136
+        # (NC vs GA), 2230/2227 (FL vs AR), 2047/498 (SC vs NC). Admit a row
+        # from another state when either summary spells out the other's state.
+        if old_state != new_state and not (
+                _names_state(new_summary, old_state)
+                or _names_state(s.get("summary") or "", new_state)):
             continue
         old_val = s.get("incident_date", "")
         # Hard-exclude on the window only when BOTH dates carry day precision:
@@ -165,7 +203,10 @@ def check_duplicate(client: anthropic.Anthropic, new_row: dict,
                 "— a newly named suspect or victim, additional victims, an origin "
                 "city for a chase or abduction, updated charges, or a corrected "
                 "date. Matching location and crime type with dates within a few "
-                "days of each other usually means the same incident, and a story "
+                "days of each other usually means the same incident; an interstate "
+                "case is often filed under a different city and state by each "
+                "outlet (the abduction's origin in one, the traffic stop or "
+                "recovery in another) and is still one incident. A story "
                 "from the same outlet or domain as an existing entry's source is "
                 "very often follow-up coverage of it. A recorded incident date "
                 "may be the date of resolution or of publication rather than of "

@@ -38,15 +38,18 @@ def canonical_url(url: str) -> str:
     return base
 
 
-_DATED_PATH_RE = re.compile(r"/\d{4}/\d{2}/\d{2}/[^/?]+$")
+# The month is numeric on most sites, but WEHCO's Democrat-Gazette family
+# (arkansasonline.com, nwaonline.com, ...) dates paths /news/2026/sep/04/slug;
+# a numeric-only pattern let one such article in twice (rows 2227/2230).
+_DATED_PATH_RE = re.compile(r"/\d{4}/(?:\d{2}|[a-z]{3})/\d{2}/[^/?]+$")
 
 
 def syndication_path(url: str) -> str | None:
-    """The /YYYY/MM/DD/slug tail of a canonical URL, if it has one. Chains
-    (e.g. Sound Publishing's Puget Sound weeklies) republish one article at
-    the same dated path on many sibling hostnames; a date plus slug is
-    specific enough to identify the article across hosts, where full-URL
-    canonicalization cannot."""
+    """The /YYYY/MM/DD/slug (or /YYYY/mon/DD/slug) tail of a canonical URL, if
+    it has one. Chains (e.g. Sound Publishing's Puget Sound weeklies)
+    republish one article at the same dated path on many sibling hostnames;
+    a date plus slug is specific enough to identify the article across
+    hosts, where full-URL canonicalization cannot."""
     m = _DATED_PATH_RE.search(canonical_url(url).partition("?")[0])
     return m.group(0) if m else None
 

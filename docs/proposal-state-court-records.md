@@ -110,7 +110,7 @@ listings (library guides, review sites) that may be stale.
    Tennessee), each documenting Flock use in a state prosecution. This is the largest gain per
    dollar on the list.
 
-**Status (2026-09-18): implemented and run.** `pipeline/courts.py` now has the seventh query,
+**Status (2026-09-19): implemented and run.** `pipeline/courts.py` now has the seventh query,
 `highlight=on` (the search snippet is the matching passage, not the document's first 500
 characters), opinion text taken from whichever field CourtListener populated (`plain_text`, then
 the HTML/XML fields), excerpts centred on the first Flock mention when a document exceeds 12,000
@@ -129,18 +129,23 @@ search snippet, and without highlighting that snippet was the opinion's caption.
 Full sweep with re-classification, run 2026-09-18 (GitHub Actions, about 4 hours, 482 candidates,
 0 errors, 15 rate-limit waits):
 
-| | Before | After |
-|---|---|---|
-| Rows in `court_records.csv` | 16 | 119 (after removing 28 same-document duplicates the run produced) |
-| State appellate opinions | 1 | 20 |
-| Federal filings (RECAP) | 15 | 99 |
-| Distinct cases among rows added | — | 91 |
+| | Before | After run 1 (2026-09-18) | After recovery run (2026-09-19) |
+|---|---|---|---|
+| Rows in `court_records.csv` | 16 | 119 (after removing 28 same-document duplicates run 1 produced) | 160 |
+| State appellate opinions | 1 | 20 | 44 |
+| Federal filings (RECAP) | 15 | 99 | 116 |
+| Confidence high / medium / low | 6 / 5 / 5 | 72 / 21 / 26 | 127 / 22 / 11 |
 
-The 19 added opinions: 14 of the 37 August candidates (previously all rejected) plus 5 found by
-the widened query or newer than the August sweep. Courts: Ohio Court of Appeals 10, Texas Courts
-of Appeals 4, Supreme Court of Georgia, Supreme Court of Kansas, Indiana Court of Appeals,
-Appellate Court of Illinois, Court of Appeals of Virginia. Added rows by confidence: 66 high,
-16 medium, 21 low. All 351 rejections sampled were correct (civil suits against Flock, public
+Run 1 added 19 opinions (14 of the 37 August candidates, previously all rejected, plus 5 found
+by the widened query or newer than the August sweep) and 84 federal filings. The recovery run
+re-ran 106 documents with text (the 80 unmarked snippet-only rejections and the 26 low-confidence
+rows): 43 new rows (24 opinions, 19 filings), 16 rows upgraded from low to high confidence, and 2
+rows removed because the full text does not qualify (*United States v. Gilliam*, a Flock-camera
+vandalism case excluded by rule; *United States v. Vasquez*). Two candidates still had no text
+and stay unmarked for the next sweep. Opinion rows by court: Ohio Court of Appeals 25, Texas
+Courts of Appeals 7, Supreme Court of Georgia 3, Court of Appeals of Virginia 3, Indiana Court of
+Appeals 2, Tennessee Court of Criminal Appeals 2, Supreme Court of Kansas 1, Appellate Court of
+Illinois 1. Sampled rejections from both runs were correct (civil suits against Flock, public
 records disputes, an amicus brief, Flock in passing).
 
 **CourtListener quota (found 2026-09-18).** The token behind `COURTLISTENER_TOKEN` has a daily
@@ -151,16 +156,16 @@ Consequences: 83 of run 1's rejections (38 opinions, 45 federal filings) were ma
 snippet, not the document, and are wrong to trust; the sweep now leaves such candidates out of
 the seen set, so they are retried, and `--retry-rejected` recovers the ones already marked. A
 `--collect-only` search followed by a `--from-file` classification keeps each run inside the
-quota. This also caps any Proposal C design that leans on CourtListener document text: budget
-a few hundred API calls per day, or ask Free Law Project for a higher limit.
+quota. The recovery on 2026-09-19 ran that way: about 130 search calls, then 106 document
+fetches with 64 short rate-limit waits and 8 fetch failures. This also caps any Proposal C design
+that leans on CourtListener document text: budget a few hundred API calls per day, or ask Free
+Law Project for a higher limit.
 
 Known defects in the added rows, for the next adversarial review:
 
-- 21 rows are snippet-only ("low") and 11 have an empty summary, because the document text
-  fetch returned nothing late in the run (the quota, above). Four Texas Court of Appeals
-  opinions found by the widened query were rejected for the same reason. Recovery runs are
-  scheduled for after the quota resets: a search-only run, unmarking the 83 snippet-only
-  rejections, then a from-file run with `reclassify_low`.
+- 11 rows remain snippet-only ("low") and 9 have an empty summary: CourtListener has no text
+  for those documents (mostly *United States v. Pfeffer* filings). They stand until text
+  appears; a `reclassify_low` run re-does them.
 - One investigation can produce many rows: 22 of the 99 federal rows are E.D. Wisconsin
   search-warrant applications, most from one 2023 Milwaukee robbery investigation, each
   affidavit reciting the same Flock hits. Rows are documents, not cases; state counts drawn

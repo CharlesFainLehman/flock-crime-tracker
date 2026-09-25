@@ -74,6 +74,16 @@ REBUILD_CORRECTIONS = {
     "2026-09-22": -2,
     "2026-09-25": -8,
 }
+# Full-database duplicate audit (2026-09-25): 37 duplicate rows merged into
+# their earlier records; these 14 were daily adds. 927->913, 2147/2152->2146,
+# 2153->2148, 2161/2162->2158/86, 2173/2176->2164, 2182/2183->2168/2151,
+# 2222->2221, 2268->2267, 2283->966, 2296->59. Most were follow-up or
+# syndicated coverage whose new details (names, dates, a neighboring city or
+# state) read as a different incident to the dedupe model.
+for _day, _delta in {"2026-08-19": -1, "2026-08-21": -3, "2026-08-23": -2,
+                     "2026-08-26": -2, "2026-08-27": -2, "2026-09-04": -1,
+                     "2026-09-18": -2, "2026-09-21": -1}.items():
+    REBUILD_CORRECTIONS[_day] = REBUILD_CORRECTIONS.get(_day, 0) + _delta
 
 
 def load_daily_adds() -> list[dict]:

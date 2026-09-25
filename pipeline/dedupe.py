@@ -1,8 +1,9 @@
 """Incident-level deduplication.
 
 Multiple outlets cover the same incident. Before adding a new row, compare it
-against existing rows in the same state within a date window; if candidates
-exist, ask Haiku whether it is the same incident. Duplicates attach their URL
+against existing rows in the same state within a date window (nationwide when
+the new row has no city); if candidates exist, ask Haiku whether it is the
+same incident. Duplicates attach their URL
 to the existing row's additional_sources instead of creating a new row.
 """
 
@@ -18,6 +19,8 @@ from pydantic import BaseModel
 from config import CLASSIFY_MODEL
 
 DATE_WINDOW_DAYS = 21
+SHORTLIST_SIZE = 20
+NATIONWIDE_EXTRA = 10
 
 
 class DedupeResult(BaseModel):
@@ -109,9 +112,13 @@ def find_candidates(new_row: dict, stories: list[dict]) -> list[dict]:
     new_dom = _domain(new_row.get("source_url", ""))
     new_state = new_row.get("state") or ""
     new_summary = new_row.get("summary") or ""
-    if not new_state:
-        return []
-    out = []
+    # A row with no city was classified from a headline or a text that never
+    # placed the incident; its state, if any, may be the syndicating
+    # station's. Such rows used to get no candidates (no state) or only
+    # wrong-state ones, so 31 affiliate copies of record 2231 were all added
+    # as new incidents. They also get the nearest rows from anywhere.
+    nationwide = not new_state or not (new_row.get("city") or "").strip()
+    out, local_ids = [], set()
     for s in stories:
         old_state = s.get("state") or ""
         # Same-state rows are always candidates. An interstate case (an
@@ -120,9 +127,11 @@ def find_candidates(new_row: dict, stories: list[dict]) -> list[dict]:
         # outlets, and a strict same-state filter compared nothing: 2149/2136
         # (NC vs GA), 2230/2227 (FL vs AR), 2047/498 (SC vs NC). Admit a row
         # from another state when either summary spells out the other's state.
-        if old_state != new_state and not (
-                _names_state(new_summary, old_state)
-                or _names_state(s.get("summary") or "", new_state)):
+        local = bool(new_state) and (
+            old_state == new_state
+            or _names_state(new_summary, old_state)
+            or _names_state(s.get("summary") or "", new_state))
+        if not (local or nationwide):
             continue
         old_val = s.get("incident_date", "")
         # Hard-exclude on the window only when BOTH dates carry day precision:
@@ -133,6 +142,8 @@ def find_candidates(new_row: dict, stories: list[dict]) -> list[dict]:
                 and _span_gap(new_span, _date_span(old_val)) > DATE_WINDOW_DAYS):
             continue
         out.append(s)
+        if local:
+            local_ids.add(s["id"])
     # Rank by date proximity before truncating: CSV order is neither
     # chronological nor relevance-ranked, so a plain slice can drop the very
     # row the new story duplicates. Imprecise dates compare by span gap, so
@@ -150,26 +161,45 @@ def find_candidates(new_row: dict, stories: list[dict]) -> list[dict]:
             return (1, 0, recency)
         return (0, _span_gap(new_span, old_span), recency)
     out.sort(key=_distance)
+    local = [s for s in out if s["id"] in local_ids]
     # Two follow-up signals are strong enough that crowding must never
     # truncate them out of the shortlist: a row sharing the new story's
     # source domain (2225 repeated 2209 from the same station's site), and a
     # row with the same city and crime type (2207 repeated 2163 — same
     # Marshall, TX homicide — but the old row's month-only date ranked it
     # past the cap in a busy state).
-    same_dom = [s for s in out if new_dom and new_dom in _row_domains(s)][:5]
+    same_dom = [s for s in local if new_dom and new_dom in _row_domains(s)][:5]
     city = (new_row.get("city") or "").strip().lower()
-    same_city = [s for s in out
+    same_city = [s for s in local
                  if city and (s.get("city") or "").strip().lower() == city
                  and s.get("crime_type") == new_row.get("crime_type")][:5]
-    shortlist, seen = [], set()
-    for s in same_dom + same_city + out:
-        if s["id"] in seen:
-            continue
-        seen.add(s["id"])
-        shortlist.append(s)
-        if len(shortlist) == 20:
-            break
+    shortlist = _take(same_dom + same_city + local, SHORTLIST_SIZE, set())
+    if nationwide:
+        # Fills the shortlist to 30 after the same-state rows, which a
+        # cityless row's state may still justify (2183 duplicated Florida
+        # record 2151), so it is a strict superset of the same-state
+        # comparison. Month- and
+        # year-only rows from every state sit 0 days from any date in their
+        # span, so nationally they rank after day-precise rows at equal gap.
+        national = sorted(out, key=lambda s: (
+            _distance(s)[:2]
+            + (int(not _day_precision(s.get("incident_date", ""))),)
+            + _distance(s)[2:]))
+        room = SHORTLIST_SIZE + NATIONWIDE_EXTRA - len(shortlist)
+        shortlist += _take(national, room, {s["id"] for s in shortlist})
     return shortlist
+
+
+def _take(rows: list[dict], n: int, seen: set[str]) -> list[dict]:
+    """The first n rows whose ids are not in `seen`, without repeats."""
+    taken = []
+    for s in rows:
+        if len(taken) == n:
+            break
+        if s["id"] not in seen:
+            seen.add(s["id"])
+            taken.append(s)
+    return taken
 
 
 def check_duplicate(client: anthropic.Anthropic, new_row: dict,
@@ -211,7 +241,10 @@ def check_duplicate(client: anthropic.Anthropic, new_row: dict,
                 "very often follow-up coverage of it. A recorded incident date "
                 "may be the date of resolution or of publication rather than of "
                 "the crime, so a small date mismatch is weak evidence of a "
-                "different incident. If still unsure after weighing these, treat "
+                "different incident. An entry with no city was classified "
+                "without a stated location; its state may be the publishing "
+                "station's, so judge it on the crime, date, and details rather "
+                "than on location. If still unsure after weighing these, treat "
                 "it as new."),
         messages=[{
             "role": "user",

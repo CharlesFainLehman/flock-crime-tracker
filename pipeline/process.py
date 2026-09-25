@@ -54,6 +54,42 @@ def syndication_path(url: str) -> str | None:
     return m.group(0) if m else None
 
 
+_HEADLINE_STOP = frozenset(
+    "a an the in on at of to for and or with by from after as is are was were "
+    "be been into over its it his her their this that than up out off new "
+    "html htm php aspx shtml amp".split())
+# Six content words keeps generic slugs ("portage-county-flock-camera-arrest")
+# and Yahoo's truncated ones ("south-carolina-murder-suspect-arrested-233125761")
+# from matching unrelated stories; at six, no two distinct records in the
+# database share a key.
+_MIN_HEADLINE_WORDS = 6
+
+
+def headline_key(text: str) -> frozenset[str] | None:
+    """Order-free set of a headline's content words, or None if too short to
+    identify an article. Tokens containing digits (ids, dates, counts) drop."""
+    words = {w for w in re.split(r"[^a-z0-9]+", text.lower())
+             if w and w not in _HEADLINE_STOP and not any(c.isdigit() for c in w)}
+    return frozenset(words) if len(words) >= _MIN_HEADLINE_WORDS else None
+
+
+def slug_key(url: str) -> frozenset[str] | None:
+    """headline_key of a URL's longest hyphenated path segment. Broadcast
+    groups (Gray, Sinclair, Nexstar) republish one story on every affiliate's
+    domain under the same headline slug, often with no date in the path
+    (www.kait8.com/2026/09/07/2-arrested-... vs .../video/2026/09/07/...)."""
+    if "news.google.com" in url:
+        return None
+    path = canonical_url(url).partition("?")[0]
+    segs = [s for s in path.split("/")[3:] if s.count("-") >= 3]
+    return headline_key(max(segs, key=len)) if segs else None
+
+
+def title_key(title: str) -> frozenset[str] | None:
+    """headline_key of a feed title, minus Google News's " - Outlet" suffix."""
+    return headline_key(re.sub(r"\s+-\s+[^-]+$", "", title or ""))
+
+
 def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
                        stories: list[dict], seen_urls: set[str]) -> dict:
     """Classify candidates and append qualifying, non-duplicate rows to stories.
@@ -68,6 +104,11 @@ def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
     stored_paths = {p for s_ in stories
                     for u in [s_["source_url"], *s_.get("additional_sources", "").split()]
                     for p in [syndication_path(u)] if p}
+    # Headline keys, to catch one story republished across a station group's
+    # affiliates under different domains and paths.
+    stored_keys = {k for s_ in stories
+                   for u in [s_["source_url"], *s_.get("additional_sources", "").split()]
+                   for k in [slug_key(u)] if k}
 
     for i, candidate in enumerate(candidates, 1):
         if candidate["url"] in seen_urls:
@@ -96,6 +137,13 @@ def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
         if url in seen_urls:
             seen_urls.add(candidate.get("google_url", url))
             counts["skipped_seen"] += 1
+            continue
+        keys = {k for k in (slug_key(url), title_key(candidate.get("title", ""))) if k}
+        if keys & stored_keys:             # same headline, another affiliate
+            seen_urls.add(url)
+            if candidate.get("google_url"):
+                seen_urls.add(candidate["google_url"])
+            counts["duplicates"] += 1
             continue
 
         print(f"[{i}/{len(candidates)}] {candidate['title'][:90]}")
@@ -140,6 +188,8 @@ def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
                     if url not in urls and url != s.get("source_url"):
                         urls.append(url)
                         s["additional_sources"] = " ".join(urls)
+            stored.add(canonical_url(url))
+            stored_keys |= keys
             if path:
                 stored_paths.add(path)
             print(f"  duplicate of id {dup_id}")
@@ -148,6 +198,7 @@ def process_candidates(client: anthropic.Anthropic, candidates: list[dict],
 
         stories.append(row)
         stored.add(canonical_url(url))
+        stored_keys |= keys
         if path:
             stored_paths.add(path)
         print(f"  ADDED: {row['city']}, {row['state']} | {row['crime_type']} | {row['outcome']}")

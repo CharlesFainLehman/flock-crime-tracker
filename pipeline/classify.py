@@ -49,7 +49,10 @@ An article does NOT qualify if it is:
 Field guidance for qualifying articles:
 - incident_date: date of the crime or the camera-assisted break in the case, as specific as the article allows (YYYY-MM-DD, YYYY-MM, or YYYY). Use the publication date only if nothing better is stated.
 - state: two-letter US postal code. Always provide it when the article names or
-  implies any location; leave city blank rather than state.
+  implies any location; leave city blank rather than state. Never infer city
+  or state from the outlet's name or home market: station groups syndicate
+  one story to affiliates across the country. With no location in the
+  headline, snippet, or text, leave both blank.
 - crime_type: choose the best fit from: {", ".join(CRIME_TYPES)}.
 - camera_role: one short phrase, e.g. "LPR hit located suspect vehicle", "footage identified suspect vehicle", "real-time alert led to traffic stop".
 - outcome: one short phrase, e.g. "arrest", "vehicle recovered", "missing person found", "charges filed", "suspect identified".

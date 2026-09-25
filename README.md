@@ -16,9 +16,11 @@ as a static site via GitHub Pages.
    Privacy/policy debates, procurement news, and Flock press releases are excluded.
    Structured fields (date, city, state, crime type, camera role, outcome, summary) are
    extracted at the same time ([pipeline/classify.py](pipeline/classify.py)).
-3. **Deduplication** — stories covering the same incident (same state, nearby dates) are
-   checked by the model and merged into a single entry with multiple source links
-   ([pipeline/dedupe.py](pipeline/dedupe.py)).
+3. **Deduplication** — the same article republished on sibling sites (matching URL,
+   dated path, or headline) is dropped outright. Stories covering the same incident
+   (same state, or anywhere when the story names no city; nearby dates) are checked by
+   the model and merged into a single entry with multiple source links
+   ([pipeline/process.py](pipeline/process.py), [pipeline/dedupe.py](pipeline/dedupe.py)).
 4. **Publishing** — the database lives in [data/stories.csv](data/stories.csv); the site in
    `site/` is regenerated from it and deployed to GitHub Pages
    ([pipeline/build_site.py](pipeline/build_site.py)).

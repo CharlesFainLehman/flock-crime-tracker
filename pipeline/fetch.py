@@ -210,12 +210,20 @@ def resolve_candidate(candidate: dict) -> None:
         return
     try:
         res = gnewsdecoder(url, interval=1)
-        decoded = res.get("decoded_url") if res.get("status") else None
+        # googlenewsdecoder 0.2 renamed the flag "status" -> "success". Reading
+        # only "status" made every decode look failed, so Google News rows
+        # were classified from headlines alone, with no city and often the
+        # syndicating station's state, and slipped past dedupe (31 copies of
+        # record 2231, September 2026).
+        ok = res.get("success", res.get("status"))
+        decoded = res.get("decoded_url") if ok else None
         if decoded and "news.google.com" not in decoded:
             candidate["google_url"] = url
             candidate["url"] = decoded.strip()
-    except Exception:
-        pass
+            return
+        print(f"  Google News decode failed: {res.get('message', res)}")
+    except Exception as e:
+        print(f"  Google News decode failed: {e}")
 
 
 def fetch_article_text(url: str, max_chars: int = 12000) -> str | None:

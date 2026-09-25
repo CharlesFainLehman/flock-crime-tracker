@@ -65,6 +65,14 @@ REBUILD_CORRECTIONS = {
     "2026-08-21": -1,
     "2026-08-22": -1,
     "2026-09-07": -1,
+    # 31 Gray TV syndications of 2231 (Sikeston/Miner, MO stolen-vehicle
+    # chase): opaque Google News links with no city or state in the text,
+    # so dedupe never shortlisted 2231. Rows 2269-2282, 2289-2295,
+    # 2298-2299 and 2308-2315 merged into 2231.
+    "2026-09-18": -14,
+    "2026-09-21": -7,
+    "2026-09-22": -2,
+    "2026-09-25": -8,
 }
 
 

@@ -4,3 +4,4 @@ googlenewsdecoder>=0.1.7
 requests>=2.31
 trafilatura>=2.0
 pillow>=10.0
+selectolax<1.0

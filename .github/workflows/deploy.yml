@@ -34,7 +34,7 @@ jobs:
     timeout-minutes: 15
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -66,4 +66,16 @@ jobs:
         with:
           path: site
       - id: deployment
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+
+      # deploy-pages sometimes lists 0 artifacts right after upload (API lag).
+      # Retry once after a pause instead of failing the whole run.
+      - name: Wait before deploy retry
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 60
+
+      - name: Deploy to GitHub Pages (retry)
+        id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
